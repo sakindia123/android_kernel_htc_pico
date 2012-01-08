@@ -48,6 +48,7 @@
 #endif
 
 #include "ext4.h"
+#include "ext4_extents.h"
 #include "ext4_jbd2.h"
 #include "xattr.h"
 #include "acl.h"

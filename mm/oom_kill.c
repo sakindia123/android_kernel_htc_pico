@@ -468,11 +468,11 @@ static void oom_kill_task(struct task_struct *p)
 			pr_err("Kill process %d (%s) sharing same memory\n",
 				task_pid_nr(q), q->comm);
 			task_unlock(q);
-			force_sig(SIGKILL, q);
+			do_send_sig_info(SIGKILL, SEND_SIG_FORCED, q, true);
 		}
 
 	set_tsk_thread_flag(p, TIF_MEMDIE);
-	force_sig(SIGKILL, p);
+	do_send_sig_info(SIGKILL, SEND_SIG_FORCED, p, true);
 }
 #undef K
 

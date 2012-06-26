@@ -12,6 +12,7 @@ WORKING
 - Ambient light sensor
 - RIL
 - Camera
+- Hardware Buttons
 - Clock
 - Battery
 - Phone (Both incoming and outgoing)
@@ -23,11 +24,10 @@ WORKING
 - Deep Sleep
 - USB 
 - WiFi (Kernel side OK)
-- Bluetooth (Kernel side OK)
 
 NOT WORKING
 ===========
 
-- Hardware Buttons(Volume up and power button)
+- Bluetooth
 
 

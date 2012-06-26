@@ -75,11 +75,6 @@
 #include <linux/leds-pm8029.h>
 #include "board-pico.h"
 
-#ifdef CONFIG_PERFLOCK_BOOT_LOCK
-#include <mach/perflock.h>
-#endif
-
-
 #define PMEM_KERNEL_EBI1_SIZE	0x3A000
 #define MSM_PMEM_AUDIO_SIZE	0x1F4000
 
@@ -213,12 +208,15 @@ static struct msm_i2c_platform_data msm_gsbi1_qup_i2c_pdata = {
 #endif
 };
 
+/*
 #ifdef CONFIG_ARCH_MSM7X27A
 #ifdef CONFIG_MSM_RESERVE_PMEM
 #define MSM_PMEM_MDP_SIZE       0x1B00000
 #define MSM_PMEM_ADSP_SIZE      0x1200000
 #endif
 #endif
+*/
+
 
 #ifdef CONFIG_USB_EHCI_MSM_72K
 static int  msm_hsusb_vbus_init(int on)
@@ -818,7 +816,7 @@ static u32 msm_calculate_batt_capacity(u32 current_voltage)
 
 static struct platform_device msm_batt_device = {
 	.name               = "msm-battery",
-	.id                 = -1,
+	.id                 = -	1,
 	.dev.platform_data  = &msm_psy_batt_data,
 };
 
@@ -981,10 +979,8 @@ static void pico_camera_vreg_config(int vreg_en)
 		}
 	}
 
-
 }
 //HTC_END
-
 
 static struct vreg *vreg_gp2;
 static struct vreg *vreg_gp3;
@@ -1131,7 +1127,6 @@ static void config_camera_off_gpios_rear(void)
 			ARRAY_SIZE(camera_off_gpio_table));
 }
 
-
 struct msm_camera_device_platform_data msm_camera_device_data_rear = {
 	.camera_gpio_on  = config_camera_on_gpios_rear,
 	.camera_gpio_off = config_camera_off_gpios_rear,
@@ -1220,18 +1215,6 @@ static struct platform_device *pico_devices[] __initdata = {
 	&msm_device_adspdec,
 	&msm_batt_device,
 	&htc_headset_mgr,
-#ifdef CONFIG_S5K4E1
-	&msm_camera_sensor_s5k4e1,
-#endif
-#ifdef CONFIG_IMX072
-	&msm_camera_sensor_imx072,
-#endif
-#ifdef CONFIG_WEBCAM_OV9726
-	&msm_camera_sensor_ov9726,
-#endif
-#ifdef CONFIG_MT9E013
-	&msm_camera_sensor_mt9e013,
-#endif
 	&msm_kgsl_3d0,
 #ifdef CONFIG_BT
 	//&msm_bt_power_device,

@@ -130,13 +130,21 @@ module_param_call(stop_on_user_error, binder_set_stop_on_user_error,
 #define binder_debug(mask, x...) \
 	do { \
 		if (binder_debug_mask & mask) \
+<<<<<<< HEAD
 			printk(KERN_INFO "[K] " x); \
+=======
+			pr_info(x); \
+>>>>>>> 51ec3c7... drivers: staging: android: binder.c: fix printk macros
 	} while (0)
 
 #define binder_user_error(x...) \
 	do { \
 		if (binder_debug_mask & BINDER_DEBUG_USER_ERROR) \
+<<<<<<< HEAD
 			printk(KERN_INFO "[K] " x); \
+=======
+			pr_info(x); \
+>>>>>>> 51ec3c7... drivers: staging: android: binder.c: fix printk macros
 		if (binder_stop_on_user_error) \
 			binder_stop_on_user_error = 2; \
 	} while (0)
@@ -425,7 +433,11 @@ repeat:
 #if 1
 	/* Sanity check */
 	if (fdt->fd[fd] != NULL) {
+<<<<<<< HEAD
 		printk(KERN_WARNING "[K] get_unused_fd: slot %d not NULL!\n", fd);
+=======
+		pr_warn("get_unused_fd: slot %d not NULL!\n", fd);
+>>>>>>> 51ec3c7... drivers: staging: android: binder.c: fix printk macros
 		fdt->fd[fd] = NULL;
 	}
 #endif
@@ -654,7 +666,11 @@ static int binder_update_page_range(struct binder_proc *proc, int allocate,
 		goto free_range;
 
 	if (vma == NULL) {
+<<<<<<< HEAD
 		printk(KERN_ERR "[K] binder: %d: binder_alloc_buf failed to "
+=======
+		pr_err("binder: %d: binder_alloc_buf failed to "
+>>>>>>> 51ec3c7... drivers: staging: android: binder.c: fix printk macros
 		       "map pages in userspace, no vma\n", proc->pid);
 		goto err_no_vma;
 	}
@@ -667,7 +683,11 @@ static int binder_update_page_range(struct binder_proc *proc, int allocate,
 		BUG_ON(*page);
 		*page = alloc_page(GFP_KERNEL | __GFP_ZERO);
 		if (*page == NULL) {
+<<<<<<< HEAD
 			printk(KERN_ERR "[K] binder: %d: binder_alloc_buf failed "
+=======
+			pr_err("binder: %d: binder_alloc_buf failed "
+>>>>>>> 51ec3c7... drivers: staging: android: binder.c: fix printk macros
 			       "for page at %p\n", proc->pid, page_addr);
 			goto err_alloc_page_failed;
 		}
@@ -676,7 +696,11 @@ static int binder_update_page_range(struct binder_proc *proc, int allocate,
 		page_array_ptr = page;
 		ret = map_vm_area(&tmp_area, PAGE_KERNEL, &page_array_ptr);
 		if (ret) {
+<<<<<<< HEAD
 			printk(KERN_ERR "[K] binder: %d: binder_alloc_buf failed "
+=======
+			pr_err("binder: %d: binder_alloc_buf failed "
+>>>>>>> 51ec3c7... drivers: staging: android: binder.c: fix printk macros
 			       "to map page at %p in kernel\n",
 			       proc->pid, page_addr);
 			goto err_map_kernel_failed;
@@ -685,7 +709,11 @@ static int binder_update_page_range(struct binder_proc *proc, int allocate,
 			(uintptr_t)page_addr + proc->user_buffer_offset;
 		ret = vm_insert_page(vma, user_page_addr, page[0]);
 		if (ret) {
+<<<<<<< HEAD
 			printk(KERN_ERR "[K] binder: %d: binder_alloc_buf failed "
+=======
+			pr_err("binder: %d: binder_alloc_buf failed "
+>>>>>>> 51ec3c7... drivers: staging: android: binder.c: fix printk macros
 			       "to map page at %lx in userspace\n",
 			       proc->pid, user_page_addr);
 			goto err_vm_insert_page_failed;
@@ -734,7 +762,11 @@ static struct binder_buffer *binder_alloc_buf(struct binder_proc *proc,
 	size_t size;
 
 	if (proc->vma == NULL) {
+<<<<<<< HEAD
 		printk(KERN_ERR "[K] binder: %d: binder_alloc_buf, no vma\n",
+=======
+		pr_err("binder: %d: binder_alloc_buf, no vma\n",
+>>>>>>> 51ec3c7... drivers: staging: android: binder.c: fix printk macros
 		       proc->pid);
 		return NULL;
 	}
@@ -772,7 +804,11 @@ static struct binder_buffer *binder_alloc_buf(struct binder_proc *proc,
 		}
 	}
 	if (best_fit == NULL) {
+<<<<<<< HEAD
 		printk(KERN_ERR "[K] binder: %d: binder_alloc_buf size %zd failed, "
+=======
+		pr_err("binder: %d: binder_alloc_buf size %zd failed, "
+>>>>>>> 51ec3c7... drivers: staging: android: binder.c: fix printk macros
 		       "no address space\n", proc->pid, size);
 		return NULL;
 	}
@@ -1007,7 +1043,11 @@ static int binder_inc_node(struct binder_node *node, int strong, int internal,
 			    node->internal_strong_refs == 0 &&
 			    !(node == binder_context_mgr_node &&
 			    node->has_strong_ref)) {
+<<<<<<< HEAD
 				printk(KERN_ERR "[K] binder: invalid inc strong "
+=======
+				pr_err("binder: invalid inc strong "
+>>>>>>> 51ec3c7... drivers: staging: android: binder.c: fix printk macros
 					"node for %d\n", node->debug_id);
 				return -EINVAL;
 			}
@@ -1023,7 +1063,11 @@ static int binder_inc_node(struct binder_node *node, int strong, int internal,
 			node->local_weak_refs++;
 		if (!node->has_weak_ref && list_empty(&node->work.entry)) {
 			if (target_list == NULL) {
+<<<<<<< HEAD
 				printk(KERN_ERR "[K] binder: invalid inc weak node "
+=======
+				pr_err("binder: invalid inc weak node "
+>>>>>>> 51ec3c7... drivers: staging: android: binder.c: fix printk macros
 					"for %d\n", node->debug_id);
 				return -EINVAL;
 			}
@@ -1286,7 +1330,11 @@ static void binder_send_failed_reply(struct binder_transaction *t,
 				target_thread->return_error = error_code;
 				wake_up_interruptible(&target_thread->wait);
 			} else {
+<<<<<<< HEAD
 				printk(KERN_ERR "[K] binder: reply failed, target "
+=======
+				pr_err("binder: reply failed, target "
+>>>>>>> 51ec3c7... drivers: staging: android: binder.c: fix printk macros
 					"thread, %d:%d, has error code %d "
 					"already\n", target_thread->proc->pid,
 					target_thread->pid,
@@ -1341,7 +1389,11 @@ static void binder_transaction_buffer_release(struct binder_proc *proc,
 		if (*offp > buffer->data_size - sizeof(*fp) ||
 		    buffer->data_size < sizeof(*fp) ||
 		    !IS_ALIGNED(*offp, sizeof(void *))) {
+<<<<<<< HEAD
 			printk(KERN_ERR "[K] binder: transaction release %d bad"
+=======
+			pr_err("binder: transaction release %d bad"
+>>>>>>> 51ec3c7... drivers: staging: android: binder.c: fix printk macros
 					"offset %zd, size %zd\n", debug_id,
 					*offp, buffer->data_size);
 			continue;
@@ -1352,7 +1404,11 @@ static void binder_transaction_buffer_release(struct binder_proc *proc,
 		case BINDER_TYPE_WEAK_BINDER: {
 			struct binder_node *node = binder_get_node(proc, fp->binder);
 			if (node == NULL) {
+<<<<<<< HEAD
 				printk(KERN_ERR "[K] binder: transaction release %d"
+=======
+				pr_err("binder: transaction release %d"
+>>>>>>> 51ec3c7... drivers: staging: android: binder.c: fix printk macros
 				       " bad node %p\n", debug_id, fp->binder);
 				break;
 			}
@@ -1365,7 +1421,11 @@ static void binder_transaction_buffer_release(struct binder_proc *proc,
 		case BINDER_TYPE_WEAK_HANDLE: {
 			struct binder_ref *ref = binder_get_ref(proc, fp->handle);
 			if (ref == NULL) {
+<<<<<<< HEAD
 				printk(KERN_ERR "[K] binder: transaction release %d"
+=======
+				pr_err("binder: transaction release %d"
+>>>>>>> 51ec3c7... drivers: staging: android: binder.c: fix printk macros
 				       " bad handle %ld\n", debug_id,
 				       fp->handle);
 				break;
@@ -1384,7 +1444,11 @@ static void binder_transaction_buffer_release(struct binder_proc *proc,
 			break;
 
 		default:
+<<<<<<< HEAD
 			printk(KERN_ERR "[K] binder: transaction release %d bad "
+=======
+			pr_err("binder: transaction release %d bad "
+>>>>>>> 51ec3c7... drivers: staging: android: binder.c: fix printk macros
 			       "object type %lx\n", debug_id, fp->type);
 			break;
 		}
@@ -1935,10 +1999,17 @@ int binder_thread_write(struct binder_proc *proc, struct binder_thread *thread,
 			break;
 		}
 		case BC_ATTEMPT_ACQUIRE:
+<<<<<<< HEAD
 			printk(KERN_ERR "[K] binder: BC_ATTEMPT_ACQUIRE not supported\n");
 			return -EINVAL;
 		case BC_ACQUIRE_RESULT:
 			printk(KERN_ERR "[K] binder: BC_ACQUIRE_RESULT not supported\n");
+=======
+			pr_err("binder: BC_ATTEMPT_ACQUIRE not supported\n");
+			return -EINVAL;
+		case BC_ACQUIRE_RESULT:
+			pr_err("binder: BC_ACQUIRE_RESULT not supported\n");
+>>>>>>> 51ec3c7... drivers: staging: android: binder.c: fix printk macros
 			return -EINVAL;
 
 		case BC_FREE_BUFFER: {
@@ -2175,7 +2246,11 @@ int binder_thread_write(struct binder_proc *proc, struct binder_thread *thread,
 		} break;
 
 		default:
+<<<<<<< HEAD
 			printk(KERN_ERR "[K] binder: %d:%d unknown command %d\n",
+=======
+			pr_err("binder: %d:%d unknown command %d\n",
+>>>>>>> 51ec3c7... drivers: staging: android: binder.c: fix printk macros
 			       proc->pid, thread->pid, cmd);
 			return -EINVAL;
 		}
@@ -2645,7 +2720,11 @@ static long binder_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	unsigned int size = _IOC_SIZE(cmd);
 	void __user *ubuf = (void __user *)arg;
 
+<<<<<<< HEAD
 	/*printk(KERN_INFO "[K] binder_ioctl: %d:%d %x %lx\n", proc->pid, current->pid, cmd, arg);*/
+=======
+	/*pr_info("binder_ioctl: %d:%d %x %lx\n", proc->pid, current->pid, cmd, arg);*/
+>>>>>>> 51ec3c7... drivers: staging: android: binder.c: fix printk macros
 
 	ret = wait_event_interruptible(binder_user_error_wait, binder_stop_on_user_error < 2);
 	if (ret)
@@ -2711,13 +2790,21 @@ static long binder_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		break;
 	case BINDER_SET_CONTEXT_MGR:
 		if (binder_context_mgr_node != NULL) {
+<<<<<<< HEAD
 			printk(KERN_ERR "[K] binder: BINDER_SET_CONTEXT_MGR already set\n");
+=======
+			pr_err("binder: BINDER_SET_CONTEXT_MGR already set\n");
+>>>>>>> 51ec3c7... drivers: staging: android: binder.c: fix printk macros
 			ret = -EBUSY;
 			goto err;
 		}
 		if (binder_context_mgr_uid != -1) {
 			if (binder_context_mgr_uid != current->cred->euid) {
+<<<<<<< HEAD
 				printk(KERN_ERR "[K] binder: BINDER_SET_"
+=======
+				pr_err("binder: BINDER_SET_"
+>>>>>>> 51ec3c7... drivers: staging: android: binder.c: fix printk macros
 				       "CONTEXT_MGR bad uid %d != %d\n",
 				       current->cred->euid,
 				       binder_context_mgr_uid);
@@ -2763,7 +2850,11 @@ err:
 	mutex_unlock(&binder_lock);
 	wait_event_interruptible(binder_user_error_wait, binder_stop_on_user_error < 2);
 	if (ret && ret != -ERESTARTSYS)
+<<<<<<< HEAD
 		printk(KERN_INFO "[K] binder: %d:%d ioctl %x %lx returned %d\n", proc->pid, current->pid, cmd, arg, ret);
+=======
+		pr_info("binder: %d:%d ioctl %x %lx returned %d\n", proc->pid, current->pid, cmd, arg, ret);
+>>>>>>> 51ec3c7... drivers: staging: android: binder.c: fix printk macros
 	return ret;
 }
 
@@ -2839,7 +2930,11 @@ static int binder_mmap(struct file *filp, struct vm_area_struct *vma)
 #ifdef CONFIG_CPU_CACHE_VIPT
 	if (cache_is_vipt_aliasing()) {
 		while (CACHE_COLOUR((vma->vm_start ^ (uint32_t)proc->buffer))) {
+<<<<<<< HEAD
 			printk(KERN_INFO "[K] binder_mmap: %d %lx-%lx maps %p bad alignment\n", proc->pid, vma->vm_start, vma->vm_end, proc->buffer);
+=======
+			pr_info("binder_mmap: %d %lx-%lx maps %p bad alignment\n", proc->pid, vma->vm_start, vma->vm_end, proc->buffer);
+>>>>>>> 51ec3c7... drivers: staging: android: binder.c: fix printk macros
 			vma->vm_start += PAGE_SIZE;
 		}
 	}
@@ -2871,7 +2966,11 @@ static int binder_mmap(struct file *filp, struct vm_area_struct *vma)
 	proc->vma = vma;
 	proc->vma_vm_mm = vma->vm_mm;
 
+<<<<<<< HEAD
 	/*printk(KERN_INFO "[K] binder_mmap: %d %lx-%lx maps %p\n",
+=======
+	/*pr_info("binder_mmap: %d %lx-%lx maps %p\n",
+>>>>>>> 51ec3c7... drivers: staging: android: binder.c: fix printk macros
 		 proc->pid, vma->vm_start, vma->vm_end, proc->buffer);*/
 	return 0;
 
@@ -2886,7 +2985,11 @@ err_get_vm_area_failed:
 err_already_mapped:
 	mutex_unlock(&binder_mmap_lock);
 err_bad_arg:
+<<<<<<< HEAD
 	printk(KERN_ERR "[K] binder_mmap: %d %lx-%lx %s failed %d\n",
+=======
+	pr_err("binder_mmap: %d %lx-%lx %s failed %d\n",
+>>>>>>> 51ec3c7... drivers: staging: android: binder.c: fix printk macros
 	       proc->pid, vma->vm_start, vma->vm_end, failure_string, ret);
 	return ret;
 }
@@ -3083,7 +3186,11 @@ static void binder_deferred_release(struct binder_proc *proc)
 		if (t) {
 			t->buffer = NULL;
 			buffer->transaction = NULL;
+<<<<<<< HEAD
 			printk(KERN_ERR "[K] binder: release proc %d, "
+=======
+			pr_err("binder: release proc %d, "
+>>>>>>> 51ec3c7... drivers: staging: android: binder.c: fix printk macros
 			       "transaction %d, not freed\n",
 			       proc->pid, t->debug_id);
 			/*BUG();*/

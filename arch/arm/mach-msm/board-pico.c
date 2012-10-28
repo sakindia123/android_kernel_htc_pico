@@ -1161,9 +1161,6 @@ static struct msm_camera_sensor_platform_info mt9t013_sensor_7627a_info = {
 // PG-POWER_SEQ-00-{
 static struct msm_camera_sensor_flash_data flash_mt9t013 = {
 	.flash_type = MSM_CAMERA_FLASH_NONE,
-#ifdef CONFIG_MSM_CAMERA_FLASH
-	.flash_src  = &msm_flash_src
-#endif
 };
 // PG-POWER_SEQ-00-}
 static struct msm_camera_sensor_info msm_camera_sensor_mt9t013_data = {
@@ -1171,8 +1168,6 @@ static struct msm_camera_sensor_info msm_camera_sensor_mt9t013_data = {
 	.sensor_reset   = 125,
 	.sensor_pwd     = 126,
 	.mclk           = 15, // PG-POWER_SEQ-00
-//	.vcm_pwd        = 1,
-//	.vcm_enable     = 0,
 	.pdata          = &msm_camera_device_data_rear,
 	.flash_data     = &flash_mt9t013, // PG-POWER_SEQ-00
 	.sensor_platform_info   = &mt9t013_sensor_7627a_info,
@@ -1755,43 +1750,6 @@ static struct i2c_board_info i2c_touch_pvt_device[] = {
 		.platform_data = &msm7x27a_ts_himax_data,
 		.irq = MSM_GPIO_TO_INT(PICO_GPIO_TP_ATT_N)
 	},
-};
-
-static ssize_t msm7x27a_virtual_keys_show(struct kobject *kobj,
-			struct kobj_attribute *attr, char *buf)
-{
-	return sprintf(buf,
-		__stringify(EV_KEY) ":" __stringify(KEY_HOME)	    ":15:528:60:65"
-		":" __stringify(EV_KEY) ":" __stringify(KEY_MENU)   ":107:528:62:65"
-		":" __stringify(EV_KEY) ":" __stringify(KEY_BACK)   ":212:528:68:65"
-		":" __stringify(EV_KEY) ":" __stringify(KEY_SEARCH) ":303:528:62:65"
-		"\n");
-}
-
-static struct kobj_attribute msm7x27a_himax_virtual_keys_attr = {
-	.attr = {
-		.name = "virtualkeys.himax-touchscreen",
-		.mode = S_IRUGO,
-	},
-	.show = &msm7x27a_virtual_keys_show,
-};
-
-static struct kobj_attribute msm7x27a_cy8c_virtual_keys_attr = {
-	.attr = {
-		.name = "virtualkeys.cy8c-touchscreen",
-		.mode = S_IRUGO,
-	},
-	.show = &msm7x27a_virtual_keys_show,
-};
-
-static struct attribute *msm7x27a_properties_attrs[] = {
-	&msm7x27a_himax_virtual_keys_attr.attr,
-	&msm7x27a_cy8c_virtual_keys_attr.attr,
-	NULL
-};
-
-static struct attribute_group msm7x27a_properties_attr_group = {
-	.attrs = msm7x27a_properties_attrs,
 };
 
 static void pico_reset(void)

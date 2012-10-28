@@ -16,7 +16,6 @@
 #define BAHAMA_SLAVE_ID_FM_REG 0x02
 #define BAHAMA_SLAVE_ID_FM_ADDR  0x2A
 #define BAHAMA_SLAVE_ID_QMEMBIST_ADDR   0x7B
-#define FM_GPIO 29
 #define BT_SYS_RST 123    //gpio_bt_sys_rest_en
 #define BT_PCM_BCLK_MODE  0x88
 #define BT_PCM_DIN_MODE   0x89

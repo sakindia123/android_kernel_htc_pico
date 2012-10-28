@@ -15,6 +15,12 @@
 #define __ARCH_ARM_MACH_MSM_BOARD_PICO_H
 
 #include <mach/board.h>
+#include "board-bahama.h"
+
+int __init pico_init_keypad(void);
+int pico_init_mmc(unsigned int sys_rev);
+int __init pico_init_panel(void);
+int __init pico_wifi_init(void);
 
 #define MSM_MEM_BASE		0x10000000
 #ifdef CONFIG_SMART_DUMMY_PICO
@@ -149,9 +155,5 @@
 #define PICO_GPIO_LCM_1v8_EN             (5)
 #define PICO_GPIO_LCM_2v85_EN             (6)
 
-int __init pico_init_keypad(void);
-int pico_init_mmc(unsigned int sys_rev);
-int __init pico_init_panel(void);
-int __init pico_wifi_init(void);
 #endif /* GUARD */
 

@@ -1296,12 +1296,12 @@ static struct platform_device *pico_devices[] __initdata = {
 	&msm_device_nand,
 	&msm_gsbi0_qup_i2c_device,
 	&msm_gsbi1_qup_i2c_device,
-	&htc_battery_pdev,
+/*	&htc_battery_pdev, */
 	&android_pmem_device,
 	&android_pmem_adsp_device,
 	&android_pmem_audio_device,
 	&msm_device_snd,
-	&usb_gadget_fserial_device,
+/*	&usb_gadget_fserial_device, */
 	&msm_device_adspdec,
 #ifdef CONFIG_BATTERY_MSM
 	&msm_batt_device,

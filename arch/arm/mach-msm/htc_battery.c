@@ -88,7 +88,7 @@ tm.tm_hour, tm.tm_min, tm.tm_sec, ts.tv_nsec); \
 } while (0)
 
 /* rpc related */
-#if (defined(CONFIG_MACH_PRIMODD)||defined(CONFIG_MACH_PRIMODS)||defined(CONFIG_MACH_GOLFU))
+#if (defined(CONFIG_MACH_PRIMODD)||defined(CONFIG_MACH_PRIMODS)||defined(CONFIG_MACH_GOLFU)||defined(CONFIG_MACH_PICO))
 #define APP_BATT_PDEV_NAME		"rs30100001"
 #else
 #define APP_BATT_PDEV_NAME		"rs30100001:00000000"

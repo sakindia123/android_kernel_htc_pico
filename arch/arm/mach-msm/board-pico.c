@@ -73,10 +73,6 @@
 #include <linux/leds-pm8029.h>
 #include "board-pico.h"
 
-#ifdef CONFIG_PERFLOCK_BOOT_LOCK
-#include <mach/perflock.h>
-#endif
-
 #ifdef CONFIG_MSM_RESERVE_PMEM
 #define PMEM_KERNEL_EBI1_SIZE	0x3A000
 #define MSM_PMEM_AUDIO_SIZE	0x5B000
@@ -860,11 +856,6 @@ static struct platform_device msm_batt_device = {
 // 126  standby (high active)
 // 15   mclk
 static uint32_t camera_off_gpio_table[] = {
-/*
-	GPIO_CFG(61, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_2MA),
-	GPIO_CFG(60, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_2MA),
-	GPIO_CFG(15, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
-*/
 // HTC_START
 // sleep status
 	GPIO_CFG(CAM_I2C_DATA,  1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
@@ -1815,6 +1806,7 @@ static void __init pico_fixup(struct machine_desc *desc, struct tag *tags,
 	mi->bank[0].start = MSM_LINUX_BASE;
 	mi->bank[0].size = MSM_LINUX_SIZE;
 }
+
 
 MACHINE_START(PICO, "pico")
 	.boot_params	= PHYS_OFFSET + 0x100,

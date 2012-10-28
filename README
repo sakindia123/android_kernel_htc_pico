@@ -1,14 +1,5 @@
 Current Errors during pico compilation
 
-arch/arm/mach-msm/board-pico.c:1299: error: 'htc_battery_pdev' undeclared here (not in a function)
-arch/arm/mach-msm/board-pico.c:1304: error: 'usb_gadget_fserial_device' undeclared here (not in a function)
-arch/arm/mach-msm/board-pico.c: In function 'pico_init':
-arch/arm/mach-msm/board-pico.c:1984: error: implicit declaration of function 'bt_power_init'
-arch/arm/mach-msm/board-pico.c:1994: error: 'i2c_tps65200_devices' undeclared (first use in this function)
-arch/arm/mach-msm/board-pico.c:1994: error: (Each undeclared identifier is reported only once
-arch/arm/mach-msm/board-pico.c:1994: error: for each function it appears in.)
-arch/arm/mach-msm/board-pico.c:1994: error: invalid operands to binary / (have 'struct platform_device **' and 'unsigned int')
-arch/arm/mach-msm/board-pico.c:1994: warning: passing argument 2 of 'i2c_register_board_info' from incompatible pointer type
-error, forbidden warning: board-pico.c:1994
-make[1]: *** [arch/arm/mach-msm/board-pico.o] Error 1
+arch/arm/mach-msm/board-pico.c:1821: error: 'pico_init' undeclared here (not in a function)
+
 

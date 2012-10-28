@@ -393,27 +393,6 @@ static struct platform_device wifi_bt_slp_clk = {
 };
 #endif
 
-static struct pm8029_led_config pm_led_config[] = {
-	{
-		.name = "button-backlight",
-		.bank = PMIC8029_GPIO1,
-		.init_pwm_brightness = 200,
-	},
-};
-
-static struct pm8029_led_platform_data pm8029_leds_data = {
-	.led_config = pm_led_config,
-	.num_leds = ARRAY_SIZE(pm_led_config),
-};
-
-static struct platform_device pm8029_leds = {
-	.name   = "leds-pm8029",
-	.id     = -1,
-	.dev    = {
-		.platform_data  = &pm8029_leds_data,
-	},
-};
-
 static struct msm_pm_platform_data msm7x27a_pm_data[MSM_PM_SLEEP_MODE_NR] = {
 	[MSM_PM_SLEEP_MODE_POWER_COLLAPSE] = {
 					.idle_supported = 1,
@@ -907,14 +886,6 @@ static uint32_t camera_on_gpio_table[] = {
 // HTC_END
 };
 
-#ifdef CONFIG_MSM_CAMERA_FLASH
-static struct msm_camera_sensor_flash_src msm_flash_src = {
-	.flash_sr_type = MSM_CAMERA_FLASH_SRC_CURRENT_DRIVER,
-	._fsrc.current_driver_src.led1 = GPIO_SURF_CAM_GP_LED_EN1,
-	._fsrc.current_driver_src.led2 = GPIO_SURF_CAM_GP_LED_EN2,
-};
-#endif
-
 //HTC_START
 //For pico camera power control
 static struct vreg *vreg_wlan4;
@@ -1237,19 +1208,6 @@ static struct i2c_board_info i2c_camera_devices[] = {
 };
 #endif
 
-#ifdef CONFIG_PERFLOCK_BOOT_LOCK
-static unsigned pico_perf_acpu_table[] = {
-       245760000,
-       480000000,
-       600000000,
-};
-
-static struct perflock_platform_data holiday_perflock_data = {
-       .perf_acpu_table = pico_perf_acpu_table,
-       .table_size = ARRAY_SIZE(pico_perf_acpu_table),
-};
-#endif
-
 static struct resource ram_console_resources[] = {
 	{
 		.start  = MSM_RAM_CONSOLE_BASE,
@@ -1263,54 +1221,6 @@ static struct platform_device ram_console_device = {
 	.id             = -1,
 	.num_resources  = ARRAY_SIZE(ram_console_resources),
 	.resource       = ram_console_resources,
-};
-
-static struct platform_device *pico_devices[] __initdata = {
-	&ram_console_device,
-	&msm_device_dmov,
-	&msm_device_smd,
-	&msm_device_uart1,
-	&msm_device_uart3,
-	/*&msm_device_uart_dm1,*/
-	&msm_device_nand,
-	&msm_gsbi0_qup_i2c_device,
-	&msm_gsbi1_qup_i2c_device,
-/*	&htc_battery_pdev, */
-	&android_pmem_device,
-	&android_pmem_adsp_device,
-	&android_pmem_audio_device,
-	&msm_device_snd,
-/*	&usb_gadget_fserial_device, */
-	&msm_device_adspdec,
-#ifdef CONFIG_BATTERY_MSM
-	&msm_batt_device,
-#endif
-	&htc_headset_mgr,
-#ifdef CONFIG_S5K4E1
-	&msm_camera_sensor_s5k4e1,
-#endif
-#ifdef CONFIG_IMX072
-	&msm_camera_sensor_imx072,
-#endif
-#ifdef CONFIG_WEBCAM_OV9726
-	&msm_camera_sensor_ov9726,
-#endif
-#ifdef CONFIG_MT9E013
-	&msm_camera_sensor_mt9e013,
-#endif
-	&msm_kgsl_3d0,
-#ifdef CONFIG_BT
-	//&msm_bt_power_device,
-#endif
-#ifdef CONFIG_MT9T013
-	&msm_camera_sensor_mt9t013,
-#endif
-#ifdef CONFIG_BT
-	&wifi_bt_slp_clk,
-	&pico_rfkill,
-	&msm_device_uart_dm1,
-#endif
-	&pm8029_leds,
 };
 
 #ifdef CONFIG_MSM_RESERVE_PMEM
@@ -1420,15 +1330,6 @@ static int msm7x27a_ts_cy8c_wake(void)
 
 	return 0;
 }
-
-/*static int msm7x27a_ts_cy8c_reset(void)
-{
-	printk(KERN_INFO "%s():\n", __func__);
-	gpio_direction_output(PICO_GPIO_TP_RST_N,0);
-	mdelay(100);
-	gpio_direction_output(PICO_GPIO_TP_RST_N,1);
-	return 0;
-}*/
 
 struct cy8c_i2c_platform_data msm7x27a_ts_cy8c_data[] = {
 	{

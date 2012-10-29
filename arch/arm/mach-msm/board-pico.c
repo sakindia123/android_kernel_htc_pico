@@ -1209,6 +1209,53 @@ static struct platform_device ram_console_device = {
 	.resource       = ram_console_resources,
 };
 
+static struct platform_device *pico_devices[] __initdata = {
+	&ram_console_device,
+	&msm_device_dmov,
+	&msm_device_smd,
+	&msm_device_uart1,
+	&msm_device_uart3,
+	/*&msm_device_uart_dm1,*/
+	&msm_device_nand,
+	&msm_gsbi0_qup_i2c_device,
+	&msm_gsbi1_qup_i2c_device,
+	//FIXME: &htc_battery_pdev,
+	&android_pmem_device,
+	&android_pmem_adsp_device,
+	//FIXME: &usb_gadget_fserial_device,
+	&msm_device_adspdec,
+#ifdef CONFIG_BATTERY_MSM
+	&msm_batt_device,
+#endif
+	&htc_headset_mgr,
+#ifdef CONFIG_S5K4E1
+	&msm_camera_sensor_s5k4e1,
+#endif
+#ifdef CONFIG_IMX072
+	&msm_camera_sensor_imx072,
+#endif
+#ifdef CONFIG_WEBCAM_OV9726
+	&msm_camera_sensor_ov9726,
+#endif
+#ifdef CONFIG_MT9E013
+	&msm_camera_sensor_mt9e013,
+#endif
+	&msm_kgsl_3d0,
+#ifdef CONFIG_BT
+	//&msm_bt_power_device,
+#endif
+#ifdef CONFIG_MT9T013
+	&msm_camera_sensor_mt9t013,
+#endif
+#ifdef CONFIG_BT
+	&wifi_bt_slp_clk,
+	&pico_rfkill,
+	&msm_device_uart_dm1,
+#endif
+	//FIXME: &pm8029_leds,
+};
+
+
 #ifdef CONFIG_MSM_RESERVE_PMEM
 
 static unsigned pmem_kernel_ebi1_size = PMEM_KERNEL_EBI1_SIZE;
@@ -1813,14 +1860,14 @@ static void __init pico_init(void)
 	bt_power_init();
 #endif
 	properties_kobj = kobject_create_and_add("board_properties", NULL);
-	if (properties_kobj)
-		rc = sysfs_create_group(properties_kobj,
-						&msm7x27a_properties_attr_group);
+	//FIXME: if (properties_kobj)
+	//	rc = sysfs_create_group(properties_kobj,
+	//					&msm7x27a_properties_attr_group);
 	if (!properties_kobj || rc)
 		pr_err("failed to create board_properties\n");
 
-	i2c_register_board_info(MSM_GSBI1_QUP_I2C_BUS_ID,
-			i2c_tps65200_devices, ARRAY_SIZE(i2c_tps65200_devices));
+	//FIXME: i2c_register_board_info(MSM_GSBI1_QUP_I2C_BUS_ID,
+	//		i2c_tps65200_devices, ARRAY_SIZE(i2c_tps65200_devices));
 #ifdef CONFIG_MSM_CAMERA
 	i2c_register_board_info(MSM_GSBI0_QUP_I2C_BUS_ID,
 			i2c_camera_devices,
@@ -1846,7 +1893,7 @@ static void __init pico_init(void)
 	pico_wifi_init();
 
 #ifdef CONFIG_MSM_RPC_VIBRATOR
-	msm_init_pmic_vibrator();
+	//FIXME: msm_init_pmic_vibrator();
 #endif
 #ifdef CONFIG_USB_ANDROID
 	pico_add_usb_devices();

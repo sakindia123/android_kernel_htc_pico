@@ -1757,6 +1757,113 @@ static void pico_reset(void)
 	gpio_set_value(PICO_GPIO_PS_HOLD, 0);
 }
 
+static void __init pico_init(void)
+{
+	int rc = 0;
+	struct kobject *properties_kobj;
+
+	msm7x2x_misc_init();
+
+	printk(KERN_INFO "pico_init() revision = 0x%x\n", system_rev);
+	printk(KERN_INFO "MSM_PMEM_MDP_BASE=0x%x MSM_PMEM_ADSP_BASE=0x%x MSM_RAM_CONSOLE_BASE=0x%x MSM_FB_BASE=0x%x\n",
+		MSM_PMEM_MDP_BASE, MSM_PMEM_ADSP_BASE, MSM_RAM_CONSOLE_BASE, MSM_FB_BASE);
+	/* Must set msm_hw_reset_hook before first proc comm */
+	msm_hw_reset_hook = pico_reset;
+
+#ifdef CONFIG_PERFLOCK_BOOT_LOCK
+	perflock_init(&holiday_perflock_data);
+#endif
+
+	/* Common functions for SURF/FFA/RUMI3 */
+	msm_device_i2c_init();
+
+	rc = pico_init_mmc(system_rev);
+	if (rc)
+		printk(KERN_CRIT "%s: MMC init failure (%d)\n", __func__, rc);
+
+#ifdef CONFIG_BT
+	bt_export_bd_address();
+#endif
+
+#ifdef CONFIG_SERIAL_MSM_HS
+	msm_uart_dm1_pdata.rx_wakeup_irq = gpio_to_irq(PICO_GPIO_BT_HOST_WAKE);
+	msm_device_uart_dm1.name = "msm_serial_hs_brcm"; /* for brcm */
+	msm_device_uart_dm1.dev.platform_data = &msm_uart_dm1_pdata;
+#endif
+
+#ifdef CONFIG_USB_MSM_OTG_72K
+	msm_otg_pdata.swfi_latency =
+		msm7x27a_pm_data
+		[MSM_PM_SLEEP_MODE_RAMP_DOWN_AND_WAIT_FOR_INTERRUPT].latency;
+#endif
+	headset_init();
+	platform_add_devices(msm_footswitch_devices,
+		msm_num_footswitch_devices);
+	platform_add_devices(pico_devices,
+			ARRAY_SIZE(pico_devices));
+
+	msm_pm_set_platform_data(msm7x27a_pm_data,
+				ARRAY_SIZE(msm7x27a_pm_data));
+
+	pico_init_panel();
+#if defined(CONFIG_I2C) && defined(CONFIG_GPIO_SX150X)
+	register_i2c_devices();
+#endif
+#if defined(CONFIG_BT) && defined(CONFIG_MARIMBA_CORE)
+	bt_power_init();
+#endif
+	properties_kobj = kobject_create_and_add("board_properties", NULL);
+	if (properties_kobj)
+		rc = sysfs_create_group(properties_kobj,
+						&msm7x27a_properties_attr_group);
+	if (!properties_kobj || rc)
+		pr_err("failed to create board_properties\n");
+
+	i2c_register_board_info(MSM_GSBI1_QUP_I2C_BUS_ID,
+			i2c_tps65200_devices, ARRAY_SIZE(i2c_tps65200_devices));
+#ifdef CONFIG_MSM_CAMERA
+	i2c_register_board_info(MSM_GSBI0_QUP_I2C_BUS_ID,
+			i2c_camera_devices,
+			ARRAY_SIZE(i2c_camera_devices));
+#endif
+	i2c_register_board_info(MSM_GSBI1_QUP_I2C_BUS_ID,
+			i2c_bma250_devices, ARRAY_SIZE(i2c_bma250_devices));
+
+	/* Disable loading because of no Cypress chip consider by pcbid */
+	if (system_rev >= 0x80) {
+		printk(KERN_INFO "No Cypress chip!\n");
+		i2c_register_board_info(MSM_GSBI1_QUP_I2C_BUS_ID,
+			i2c_touch_pvt_device, ARRAY_SIZE(i2c_touch_pvt_device));
+	} else
+		i2c_register_board_info(MSM_GSBI1_QUP_I2C_BUS_ID,
+			i2c_touch_device, ARRAY_SIZE(i2c_touch_device));
+
+	pl_sensor_init();
+	i2c_register_board_info(MSM_GSBI1_QUP_I2C_BUS_ID, i2c_CM3628_devices,
+				ARRAY_SIZE(i2c_CM3628_devices));
+
+	pico_init_keypad();
+	pico_wifi_init();
+
+#ifdef CONFIG_MSM_RPC_VIBRATOR
+	msm_init_pmic_vibrator();
+#endif
+#ifdef CONFIG_USB_ANDROID
+	pico_add_usb_devices();
+#endif
+#ifdef CONFIG_MSM_HTC_DEBUG_INFO
+	htc_debug_info_init();
+#endif
+#if defined(CONFIG_MSM_SERIAL_DEBUGGER)
+	if (!opt_disable_uart3)
+		msm_serial_debug_init(MSM_UART3_PHYS, INT_UART3,
+				&msm_device_uart3.dev, 1,
+				MSM_GPIO_TO_INT(PICO_GPIO_UART3_RX));
+#endif
+	/*7x25a kgsl initializations*/
+	msm7x25a_kgsl_3d0_init();
+}
+
 static void __init pico_fixup(struct machine_desc *desc, struct tag *tags,
                                char **cmdline, struct meminfo *mi)
 {

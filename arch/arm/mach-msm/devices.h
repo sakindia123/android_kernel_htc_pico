@@ -90,6 +90,7 @@ extern struct platform_device msm_device_hsic_host;
 extern struct platform_device msm_device_hsusb;
 
 extern struct platform_device msm_device_otg;
+extern struct platform_device usb_gadget_fserial_device;
 
 extern struct platform_device msm8960_device_otg;
 extern struct platform_device msm8960_device_gadget_peripheral;

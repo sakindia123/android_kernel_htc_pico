@@ -17,6 +17,9 @@
 #include <asm/setup.h>
 #include <linux/mtd/nand.h>
 
+
+static char *df_serialno = "000000000000";
+static char *board_sn;
 #define MFG_GPIO_TABLE_MAX_SIZE        0x400
 static unsigned char mfg_gpio_table[MFG_GPIO_TABLE_MAX_SIZE];
 
@@ -382,6 +385,28 @@ int board_build_flag(void)
 }
 
 EXPORT_SYMBOL(board_build_flag);
+
+static int __init board_serialno_setup(char *serialno)
+{
+	char *str;
+
+	/* use default serial number when mode is factory2 */
+	if (board_mfg_mode() == 1 || !strlen(serialno))
+		str = df_serialno;
+	else
+		str = serialno;
+#ifdef CONFIG_USB_FUNCTION
+	msm_hsusb_pdata.serial_number = str;
+#endif
+	board_sn = str;
+	return 1;
+}
+__setup("androidboot.serialno=", board_serialno_setup);
+
+char *board_serialno(void)
+{
+	return board_sn;
+}
 
 /* ISL29028 ID values */
 #define ATAG_PS_TYPE 0x4d534D77

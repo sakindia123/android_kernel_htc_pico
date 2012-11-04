@@ -253,7 +253,7 @@ static struct msm_otg_platform_data msm_otg_pdata = {
 };
 #endif
 
-#ifdef CONFIG_USB_ANDROID
+#ifdef CONFIG_USB_G_ANDROID //cute_prince: CONFIG_USB_ANDROID is depreciated in Kernel 3.x. Used CONFIG_USB_G_ANDROID instead
 static int pico_phy_init_seq[] =
 {
 	0x2C, 0x31,
@@ -388,6 +388,28 @@ static struct platform_device wifi_bt_slp_clk = {
 	},
 };
 #endif
+
+//cute_prince: PMIC8029 LED Fixed
+static struct pm8029_led_config pm_led_config[] = {
+	{
+		.name = "button-backlight",
+		.bank = PMIC8029_GPIO1,
+		.init_pwm_brightness = 200,
+	},
+};
+
+static struct pm8029_led_platform_data pm8029_leds_data = {
+	.led_config = pm_led_config,
+	.num_leds = ARRAY_SIZE(pm_led_config),
+};
+
+static struct platform_device pm8029_leds = {
+	.name   = "leds-pm8029",
+	.id     = -1,
+	.dev    = {
+		.platform_data  = &pm8029_leds_data,
+	},
+};
 
 static struct msm_pm_platform_data msm7x27a_pm_data[MSM_PM_SLEEP_MODE_NR] = {
 	[MSM_PM_SLEEP_MODE_POWER_COLLAPSE] = {
@@ -1219,10 +1241,10 @@ static struct platform_device *pico_devices[] __initdata = {
 	&msm_device_nand,
 	&msm_gsbi0_qup_i2c_device,
 	&msm_gsbi1_qup_i2c_device,
-	//FIXME: &htc_battery_pdev,
+	&htc_battery_pdev, //cute_prince: Fixed htc_battery_pdev
 	&android_pmem_device,
 	&android_pmem_adsp_device,
-	//FIXME: &usb_gadget_fserial_device,
+	&usb_gadget_fserial_device, //cute_prince: Fixed usb_gadget_fserial_device
 	&msm_device_adspdec,
 #ifdef CONFIG_BATTERY_MSM
 	&msm_batt_device,
@@ -1252,7 +1274,7 @@ static struct platform_device *pico_devices[] __initdata = {
 	&pico_rfkill,
 	&msm_device_uart_dm1,
 #endif
-	//FIXME: &pm8029_leds,
+	&pm8029_leds, //cute_prince: Fixed PMIC8029 LED
 };
 
 
@@ -1893,9 +1915,9 @@ static void __init pico_init(void)
 	pico_wifi_init();
 
 #ifdef CONFIG_MSM_RPC_VIBRATOR
-	//FIXME: msm_init_pmic_vibrator();
+	msm_init_pmic_vibrator(3000); //cute_prince: Fixed msm_init_pmic_vibrator()
 #endif
-#ifdef CONFIG_USB_ANDROID
+#ifdef CONFIG_USB_G_ANDROID //cute_prince: CONFIG_USB_ANDROID is depreciated in Kernel 3.x. Used CONFIG_USB_G_ANDROID instead
 	pico_add_usb_devices();
 #endif
 #ifdef CONFIG_MSM_HTC_DEBUG_INFO

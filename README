@@ -1,5 +1,3 @@
-Current Errors during pico compilation
 
-arch/arm/mach-msm/board-pico.c:1821: error: 'pico_init' undeclared here (not in a function)
 
 

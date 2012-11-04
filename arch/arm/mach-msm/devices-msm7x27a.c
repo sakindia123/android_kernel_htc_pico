@@ -25,7 +25,7 @@
 #include <asm/mach/mmc.h>
 #include <mach/rpc_hsusb.h>
 #include <mach/socinfo.h>
-
+#include <mach/usb_gadget_fserial.h>
 #include "devices.h"
 #include "devices-msm7x2xa.h"
 #include "footswitch.h"
@@ -181,6 +181,18 @@ static struct resource resources_hsusb_host[] = {
 		.start	= INT_USB_HS,
 		.end	= INT_USB_HS,
 		.flags	= IORESOURCE_IRQ,
+	},
+};
+
+static struct usb_gadget_fserial_platform_data fserial_pdata = {
+	.no_ports	= 2,
+};
+
+struct platform_device usb_gadget_fserial_device = {
+	.name	= "usb_fserial",
+	.id	= -1,
+	.dev	= {
+		.platform_data = &fserial_pdata,
 	},
 };
 

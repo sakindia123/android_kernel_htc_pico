@@ -1,0 +1,35 @@
+#for audio
+/dev/msm_acdb	          0660   system     audio
+/dev/codec_aic3254        0660   system     audio
+/dev/msm_audio_dev_ctrl   0660   system     audio
+/dev/control0             0660   system     audio
+/dev/msm_mp3              0660   system     audio
+/dev/msm_mp3_lp           0660   system     audio
+/dev/msm_pcm_in           0660   system     audio
+/dev/msm_pcm_lp_dec       0660   system     audio
+/dev/msm_pcm_out          0660   system     audio
+/dev/htc-acdb             0660   system     audio
+/dev/htc-acoustic         0660   system     audio
+/dev/controlC0            0660   system     audio
+/dev/adsp                 0660   system     audio
+/dev/pmem_audio	          0660   system     audio
+/dev/tpa2051d3	          0660   system     audio
+/dev/msm_mvs	          0660   system     audio
+# for modem link
+/sys/class/android_usb/f_modem/on              0600    system  system
+/sys/module/serial/parameters/modem_enabled    0600    system  system
+/dev/ttyHSUSB0                                 0600    system  system
+/dev/rfkill               0660    root        wifi
+/dev/ttySA0                                    0600    system  system
+/dev/smd9                                      0600    system  system
+/dev/ttyMSM0              0600   bluetooth  bluetooth
+/dev/ttyHS0               0600   bluetooth  bluetooth
+/dev/uinput               0660   system     bluetooth
+/dev/akm8975_daemon       0640   compass    system
+/dev/akm8975_aot          0640   compass    system
+/dev/akm8973_daemon       0640   compass    system
+/dev/akm8973_aot          0640   compass    system
+/sys/devices/virtual/input/input*   enable      0660  root   input
+/sys/devices/virtual/input/input*   poll_delay  0660  root   input
+/sys/devices/virtual/usb_composite/*   enable      0664  root   system
+/dev/input/*              0660   root       input

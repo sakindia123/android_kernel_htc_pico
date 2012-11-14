@@ -1,0 +1,145 @@
+import init.pico.usb.rc
+
+on early-init
+    export EXTERNAL_STORAGE /mnt/sdcard
+    mkdir /mnt/sdcard 0000 system system
+    # for backwards compatibility
+    symlink /mnt/sdcard /sdcard
+
+on post-fs-data
+    mkdir /data/misc/wifi 0770 wifi wifi
+    mkdir /data/misc/wifi/sockets 0770 wifi wifi
+    mkdir /data/misc/dhcp 0770 dhcp dhcp
+    chown dhcp dhcp /data/misc/dhcp
+
+on boot
+    mount debugfs /sys/kernel/debug /sys/kernel/debug
+
+    # bluetooth power up/down interface
+    chown bluetooth bluetooth /dev/ttyHS0
+    chmod 0600 /dev/ttyHS0
+    chown bluetooth bluetooth /sys/class/rfkill/rfkill0/type
+    chown bluetooth bluetooth /sys/class/rfkill/rfkill0/state
+    chmod 0660                /sys/class/rfkill/rfkill0/state
+
+    chown radio radio /sys/module/pm/parameters/idle_sleep_mode
+
+    # bluetooth MAC address programming
+    chown bluetooth bluetooth /sys/module/htc_bdaddress/parameters/bdaddress
+    setprop ro.bt.bdaddr_path /sys/module/htc_bdaddress/parameters/bdaddress
+
+    # bluetooth car dock pin
+    chown system system /sys/class/switch/dock/bt_pin
+
+    # Permissions for Liblights.
+    chown system system /sys/class/leds/green/brightness
+    chown system system /sys/class/leds/green/blink
+    chown system system /sys/class/leds/amber/brightness
+    chown system system /sys/class/leds/amber/blink
+    chown system system /sys/class/leds/blue/brightness
+    chown system system /sys/class/leds/blue/blink
+    chown system system /sys/class/leds/button-backlight/brightness
+    chown system system /sys/class/leds/lcd-backlight/brightness
+
+    # Power Management
+    write /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq 122880
+    write /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq 600000
+    write /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor ondemand
+    write /sys/devices/system/cpu/cpufreq/ondemand/up_threshold 90
+    write /sys/devices/system/cpu/cpufreq/ondemand/sampling_rate 40000
+    
+    # for CM performance
+    chown root system /sys/devices/system/cpu/cpu0/cpufreq/scaling_available_frequencies
+    chown root system /sys/devices/system/cpu/cpu0/cpufreq/scaling_available_governors
+    chown root system /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq 
+    
+    # Enable low memory killer to check file pages
+    write /sys/module/lowmemorykiller/parameters/minfile 0,0,0,5120,5632,6144
+    write /sys/module/lowmemorykiller/parameters/check_filepages 1
+    
+    #usb tethering
+    chmod 0777 /sys/class/usb_composite/*
+
+    # Fix ipconfig for wifi
+    touch /data/misc/wifi/ipconfig.txt
+    chmod 0777 /data/misc/wifi/ipconfig.txt
+
+    # flashlight
+    chown system camera /sys/devices/platform/flashlight.0/leds/flashlight/brightness
+    chmod 0660          /sys/devices/platform/flashlight.0/leds/flashlight/brightness
+
+    # fix for entropy service and some other that failed
+    # Need for NET
+    chmod 755 /data/system/appwidgets.xml
+    chmod 755 /data/system/entropy.dat
+    chmod 755 /data/system/wallpaper_info.xml
+    
+    # enable the GPS
+    setprop ro.ril.def.agps.mode 2
+
+    # performance tweaks for flash
+    write /sys/block/mtdblock3/bdi/read_ahead_kb 4
+    write /sys/block/mtdblock4/bdi/read_ahead_kb 4
+    write /sys/block/mtdblock5/bdi/read_ahead_kb 4
+
+    # Wakelock debug
+    write /sys/module/wakelock/parameters/debug_mask 7
+
+    # Fast dormancy settings
+    setprop ro.ril.fast.dormancy.rule 1
+    setprop ro.ril.fd.scron.timeout 4
+    setprop ro.ril.fd.scroff.timeout 3
+
+service hciattach /system/bin/logwrapper /system/bin/brcm_patchram_plus -d --no2bytes --tosleep=50000 --enable_hci --baudrate 3000000 --patchram /etc/firmware/BCM4330B1_002.001.003.0221.0228.hcd --scopcm=0,0,0,0,0,0,0,3,3,0 /dev/ttyHS0
+    user root
+    group bluetooth net_bt_admin
+    disabled
+    oneshot
+
+service wpa_supplicant /system/bin/wpa_supplicant \
+    -Dnl80211 -ieth0 -e/data/misc/wifi/entropy.bin
+#   we will start as root and wpa_supplicant will switch to user wifi
+#   after setting up the capabilities required for WEXT
+    class main
+    socket wpa_eth0 dgram 660 wifi wifi
+    disabled
+    oneshot
+
+service dhcpcd_eth0 /system/bin/dhcpcd -ABKL
+    class main
+    disabled
+    oneshot
+
+service dhcpcd_bnep0 /system/bin/dhcpcd -ABKL
+    class main
+    disabled
+    oneshot
+    
+service dhcpcd_p2p /system/bin/dhcpcd -aABKL
+    class main
+    disabled
+    oneshot
+
+service iprenew_eth0 /system/bin/dhcpcd -n
+    class main
+    disabled
+    oneshot
+
+service iprenew_bnep0 /system/bin/dhcpcd -n
+    class main
+    disabled
+    oneshot
+    
+service iprenew_p2p /system/bin/dhcpcd -n
+    class main
+    disabled
+    oneshot
+
+    # bugreport is triggered by the KEY_VOLUMEUP and BTN_MOUSE keycodes
+service bugreport /system/bin/dumpstate -d -v -o /sdcard/bugreports/bugreport
+    class main
+    disabled
+    oneshot
+    keycodes 115 272
+
+service dspcrashd /system/bin/dspcrashd

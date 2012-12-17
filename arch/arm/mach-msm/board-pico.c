@@ -320,6 +320,9 @@ static struct android_usb_platform_data android_usb_pdata = {
 	.products		= usb_products,
 	.num_functions		= ARRAY_SIZE(usb_functions_all),
 	.functions		= usb_functions_all,
+	.fserial_init_string	= "tty:modem,tty,tty:serial",
+	.nluns			= 2,
+	.usb_id_pin_gpio	= PICO_GPIO_USB_ID,
 };
 
 static struct platform_device android_usb_device = {
@@ -329,6 +332,26 @@ static struct platform_device android_usb_device = {
 		.platform_data = &android_usb_pdata,
 	},
 };
+
+static uint32_t usb_ID_PIN_input_table[] = {
+	GPIO_CFG(PICO_GPIO_USB_ID, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+};
+
+static uint32_t usb_ID_PIN_output_table[] = {
+	GPIO_CFG(PICO_GPIO_USB_ID, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+};
+
+void config_pico_usb_id_gpios(bool output)
+{
+	if (output) {
+		gpio_tlmm_config(usb_ID_PIN_output_table[0], GPIO_CFG_ENABLE);
+		gpio_set_value(PICO_GPIO_USB_ID, 1);
+		printk(KERN_INFO "%s %d output high\n", __func__, PICO_GPIO_USB_ID);
+	} else {
+		gpio_tlmm_config(usb_ID_PIN_input_table[0], GPIO_CFG_ENABLE);
+		printk(KERN_INFO "%s %d input none pull\n", __func__, PICO_GPIO_USB_ID);
+	}
+}
 
 void pico_add_usb_devices(void)
 {

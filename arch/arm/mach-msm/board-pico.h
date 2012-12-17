@@ -60,6 +60,7 @@ int __init pico_wifi_init(void);
 
 #define PICO_GPIO_TO_INT(x)           (x+64) /* from gpio_to_irq */
 
+#define PICO_GPIO_USB_ID             (17)
 #define PICO_GPIO_USB_ID_PIN          (19)
 #define PICO_POWER_KEY                (20)
 #define PICO_GPIO_PS_HOLD         (25)

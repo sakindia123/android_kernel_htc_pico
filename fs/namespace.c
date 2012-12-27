@@ -2727,3 +2727,13 @@ bool our_mnt(struct vfsmount *mnt)
 {
 	return check_mnt(mnt);
 }
+
+void kern_unmount(struct vfsmount *mnt)
+{
+	/* release long term mount so mount point can be released */
+	if (!IS_ERR_OR_NULL(mnt)) {
+		mnt_make_shortterm(mnt);
+		mntput(mnt);
+	}
+}
+EXPORT_SYMBOL(kern_unmount);

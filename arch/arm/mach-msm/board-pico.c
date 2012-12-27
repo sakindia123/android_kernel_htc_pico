@@ -73,8 +73,11 @@
 #include <linux/leds-pm8029.h>
 #include "board-pico.h"
 
+#ifdef CONFIG_PERFLOCK_BOOT_LOCK
+#include <mach/perflock.h>
+#endif
+
 #ifdef CONFIG_MSM_RESERVE_PMEM
-#define PMEM_KERNEL_EBI1_SIZE	0x3A000
 #define MSM_PMEM_AUDIO_SIZE	0x5B000
 #endif
 #define BAHAMA_SLAVE_ID_FM_ADDR         0x2A
@@ -253,7 +256,7 @@ static struct msm_otg_platform_data msm_otg_pdata = {
 };
 #endif
 
-#ifdef CONFIG_USB_G_ANDROID //cute_prince: CONFIG_USB_ANDROID is depreciated in Kernel 3.x. Used CONFIG_USB_G_ANDROID instead
+#ifdef CONFIG_USB_G_ANDROID
 static int pico_phy_init_seq[] =
 {
 	0x2C, 0x31,
@@ -263,9 +266,24 @@ static int pico_phy_init_seq[] =
 	-1
 };
 
+/* TODO
+static void pico_phy_reset(void)
+{
+	int ret;
+
+	printk(KERN_INFO "msm_hsusb_phy_reset\n");
+	ret = msm_proc_comm(PCOM_MSM_HSUSB_PHY_RESET,
+			NULL, NULL);
+	if (ret)
+		printk(KERN_INFO "%s failed\n", __func__);
+}
+*/
 
 static struct msm_hsusb_platform_data msm_hsusb_pdata = {
 	.phy_init_seq		= pico_phy_init_seq,
+/* TODO
+	.phy_reset		= pico_phy_reset,
+*/
 	.usb_id_pin_gpio	= PICO_GPIO_USB_ID_PIN,
 };
 
@@ -400,6 +418,7 @@ static struct platform_device pico_rfkill = {
 };
 
 static struct htc_sleep_clk_platform_data htc_slp_clk_data = {
+	/*.sleep_clk_pin = PICO_WIFI_BT_SLEEP_CLK,*/
 
 };
 
@@ -412,7 +431,6 @@ static struct platform_device wifi_bt_slp_clk = {
 };
 #endif
 
-//cute_prince: PMIC8029 LED Fixed
 static struct pm8029_led_config pm_led_config[] = {
 	{
 		.name = "button-backlight",
@@ -687,56 +705,7 @@ static int __init pmem_adsp_size_setup(char *p)
 }
 
 early_param("pmem_adsp_size", pmem_adsp_size_setup);
-
-
 #endif
-
-
-#define SND(desc, num) { .name = #desc, .id = num }
-static struct snd_endpoint snd_endpoints_list[] = {
-	SND(HANDSET, 0),
-	SND(SPEAKER, 1),
-	SND(HEADSET,2),
-	SND(BT, 3),
-	SND(CARKIT, 3),
-	SND(TTY_FULL, 5),
-	SND(TTY_HEADSET, 5),
-	SND(TTY_VCO, 6),
-	SND(TTY_HCO, 7),
-	SND(NO_MIC_HEADSET, 8),
-	SND(FM_HEADSET, 9),
-	SND(HEADSET_AND_SPEAKER, 10),
-	SND(STEREO_HEADSET_AND_SPEAKER, 10),
-	SND(BT_EC_OFF, 44),
-	SND(CURRENT, 256),
-};
-#undef SND
-
-static struct msm_snd_endpoints msm_device_snd_endpoints = {
-	.endpoints = snd_endpoints_list,
-	.num = sizeof(snd_endpoints_list) / sizeof(struct snd_endpoint)
-};
-
-static struct platform_device msm_device_snd = {
-	.name = "msm_snd",
-	.id = -1,
-	.dev    = {
-		.platform_data = &msm_device_snd_endpoints
-	},
-};
-
-static struct android_pmem_platform_data android_pmem_audio_pdata = {
-	.name = "pmem_audio",
-	.allocator_type = PMEM_ALLOCATORTYPE_BITMAP,
-	.cached = 0,
-	.memory_type = MEMTYPE_EBI1,
-};
-
-static struct platform_device android_pmem_audio_device = {
-	.name = "android_pmem",
-	.id = 2,
-	.dev = { .platform_data = &android_pmem_audio_pdata },
-};
 
 #define DEC0_FORMAT ((1<<MSM_ADSP_CODEC_MP3)| \
 	(1<<MSM_ADSP_CODEC_AAC)|(1<<MSM_ADSP_CODEC_WMA)| \
@@ -901,6 +870,11 @@ static struct platform_device msm_batt_device = {
 // 126  standby (high active)
 // 15   mclk
 static uint32_t camera_off_gpio_table[] = {
+/*
+	GPIO_CFG(61, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_2MA),
+	GPIO_CFG(60, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_2MA),
+	GPIO_CFG(15, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+*/
 // HTC_START
 // sleep status
 	GPIO_CFG(CAM_I2C_DATA,  1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
@@ -912,6 +886,11 @@ static uint32_t camera_off_gpio_table[] = {
 };
 
 static uint32_t camera_on_gpio_table[] = {
+/*
+	GPIO_CFG(61, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_2MA),
+	GPIO_CFG(60, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_2MA),
+	GPIO_CFG(15, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+*/
 // HTC_START
 // sleep status
 	GPIO_CFG(CAM_I2C_DATA,  1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
@@ -921,6 +900,14 @@ static uint32_t camera_on_gpio_table[] = {
 	GPIO_CFG(CAM_MCLK,      1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_16MA),
 // HTC_END
 };
+
+#ifdef CONFIG_MSM_CAMERA_FLASH
+static struct msm_camera_sensor_flash_src msm_flash_src = {
+	.flash_sr_type = MSM_CAMERA_FLASH_SRC_CURRENT_DRIVER,
+	._fsrc.current_driver_src.led1 = GPIO_SURF_CAM_GP_LED_EN1,
+	._fsrc.current_driver_src.led2 = GPIO_SURF_CAM_GP_LED_EN2,
+};
+#endif
 
 //HTC_START
 //For pico camera power control
@@ -1206,6 +1193,9 @@ static struct msm_camera_sensor_platform_info mt9t013_sensor_7627a_info = {
 // PG-POWER_SEQ-00-{
 static struct msm_camera_sensor_flash_data flash_mt9t013 = {
 	.flash_type = MSM_CAMERA_FLASH_NONE,
+#ifdef CONFIG_MSM_CAMERA_FLASH
+	.flash_src  = &msm_flash_src
+#endif
 };
 // PG-POWER_SEQ-00-}
 static struct msm_camera_sensor_info msm_camera_sensor_mt9t013_data = {
@@ -1213,6 +1203,8 @@ static struct msm_camera_sensor_info msm_camera_sensor_mt9t013_data = {
 	.sensor_reset   = 125,
 	.sensor_pwd     = 126,
 	.mclk           = 15, // PG-POWER_SEQ-00
+//	.vcm_pwd        = 1,
+//	.vcm_enable     = 0,
 	.pdata          = &msm_camera_device_data_rear,
 	.flash_data     = &flash_mt9t013, // PG-POWER_SEQ-00
 	.sensor_platform_info   = &mt9t013_sensor_7627a_info,
@@ -1236,6 +1228,19 @@ static struct i2c_board_info i2c_camera_devices[] = {
 		I2C_BOARD_INFO("mt9t013", 0x6C ),// PG-POWER_SEQ-00
 	},
 	#endif
+};
+#endif
+
+#ifdef CONFIG_PERFLOCK_BOOT_LOCK
+static unsigned pico_perf_acpu_table[] = {
+       245760000,
+       480000000,
+       600000000,
+};
+
+static struct perflock_platform_data holiday_perflock_data = {
+       .perf_acpu_table = pico_perf_acpu_table,
+       .table_size = ARRAY_SIZE(pico_perf_acpu_table),
 };
 #endif
 
@@ -1264,10 +1269,10 @@ static struct platform_device *pico_devices[] __initdata = {
 	&msm_device_nand,
 	&msm_gsbi0_qup_i2c_device,
 	&msm_gsbi1_qup_i2c_device,
-	&htc_battery_pdev, //cute_prince: Fixed htc_battery_pdev
+	&htc_battery_pdev,
 	&android_pmem_device,
 	&android_pmem_adsp_device,
-	&usb_gadget_fserial_device, //cute_prince: Fixed usb_gadget_fserial_device
+	&usb_gadget_fserial_device,
 	&msm_device_adspdec,
 #ifdef CONFIG_BATTERY_MSM
 	&msm_batt_device,
@@ -1297,28 +1302,10 @@ static struct platform_device *pico_devices[] __initdata = {
 	&pico_rfkill,
 	&msm_device_uart_dm1,
 #endif
-	&pm8029_leds, //cute_prince: Fixed PMIC8029 LED
+	&pm8029_leds,
 };
 
-
 #ifdef CONFIG_MSM_RESERVE_PMEM
-
-static unsigned pmem_kernel_ebi1_size = PMEM_KERNEL_EBI1_SIZE;
-static int __init pmem_kernel_ebi1_size_setup(char *p)
-{
-	pmem_kernel_ebi1_size = memparse(p, NULL);
-	return 0;
-}
-early_param("pmem_kernel_ebi1_size", pmem_kernel_ebi1_size_setup);
-
-static unsigned pmem_audio_size = MSM_PMEM_AUDIO_SIZE;
-static int __init pmem_audio_size_setup(char *p)
-{
-	pmem_audio_size = memparse(p, NULL);
-	return 0;
-}
-early_param("pmem_audio_size", pmem_audio_size_setup);
-
 static struct memtype_reserve msm7x27a_reserve_table[] __initdata = {
 	[MEMTYPE_SMI] = {
 	},
@@ -1330,13 +1317,11 @@ static struct memtype_reserve msm7x27a_reserve_table[] __initdata = {
 	},
 };
 
-
 static void __init size_pmem_devices(void)
 {
 #ifdef CONFIG_ANDROID_PMEM
 	android_pmem_adsp_pdata.size = pmem_adsp_size;
 	android_pmem_pdata.size = pmem_mdp_size;
-	android_pmem_audio_pdata.size = pmem_audio_size;
 #endif
 }
 
@@ -1350,8 +1335,6 @@ static void __init reserve_pmem_memory(void)
 #ifdef CONFIG_ANDROID_PMEM
 	reserve_memory_for(&android_pmem_adsp_pdata);
 	reserve_memory_for(&android_pmem_pdata);
-	reserve_memory_for(&android_pmem_audio_pdata);
-	msm7x27a_reserve_table[MEMTYPE_EBI1].size += pmem_kernel_ebi1_size;
 #endif
 }
 
@@ -1408,6 +1391,15 @@ static int msm7x27a_ts_cy8c_wake(void)
 
 	return 0;
 }
+
+/*static int msm7x27a_ts_cy8c_reset(void)
+{
+	printk(KERN_INFO "%s():\n", __func__);
+	gpio_direction_output(PICO_GPIO_TP_RST_N,0);
+	mdelay(100);
+	gpio_direction_output(PICO_GPIO_TP_RST_N,1);
+	return 0;
+}*/
 
 struct cy8c_i2c_platform_data msm7x27a_ts_cy8c_data[] = {
 	{
@@ -1844,6 +1836,43 @@ static struct i2c_board_info i2c_touch_pvt_device[] = {
 	},
 };
 
+static ssize_t msm7x27a_virtual_keys_show(struct kobject *kobj,
+			struct kobj_attribute *attr, char *buf)
+{
+	return sprintf(buf,
+		__stringify(EV_KEY) ":" __stringify(KEY_HOME)	    ":15:528:60:65"
+		":" __stringify(EV_KEY) ":" __stringify(KEY_MENU)   ":107:528:62:65"
+		":" __stringify(EV_KEY) ":" __stringify(KEY_BACK)   ":212:528:68:65"
+		":" __stringify(EV_KEY) ":" __stringify(KEY_SEARCH) ":303:528:62:65"
+		"\n");
+}
+
+static struct kobj_attribute msm7x27a_himax_virtual_keys_attr = {
+	.attr = {
+		.name = "virtualkeys.himax-touchscreen",
+		.mode = S_IRUGO,
+	},
+	.show = &msm7x27a_virtual_keys_show,
+};
+
+static struct kobj_attribute msm7x27a_cy8c_virtual_keys_attr = {
+	.attr = {
+		.name = "virtualkeys.cy8c-touchscreen",
+		.mode = S_IRUGO,
+	},
+	.show = &msm7x27a_virtual_keys_show,
+};
+
+static struct attribute *msm7x27a_properties_attrs[] = {
+	&msm7x27a_himax_virtual_keys_attr.attr,
+	&msm7x27a_cy8c_virtual_keys_attr.attr,
+	NULL
+};
+
+static struct attribute_group msm7x27a_properties_attr_group = {
+	.attrs = msm7x27a_properties_attrs,
+};
+
 static void pico_reset(void)
 {
 	gpio_set_value(PICO_GPIO_PS_HOLD, 0);
@@ -1905,14 +1934,14 @@ static void __init pico_init(void)
 	bt_power_init();
 #endif
 	properties_kobj = kobject_create_and_add("board_properties", NULL);
-	//FIXME: if (properties_kobj)
-	//	rc = sysfs_create_group(properties_kobj,
-	//					&msm7x27a_properties_attr_group);
+	if (properties_kobj)
+		rc = sysfs_create_group(properties_kobj,
+						&msm7x27a_properties_attr_group);
 	if (!properties_kobj || rc)
 		pr_err("failed to create board_properties\n");
 
-	//FIXME: i2c_register_board_info(MSM_GSBI1_QUP_I2C_BUS_ID,
-	//		i2c_tps65200_devices, ARRAY_SIZE(i2c_tps65200_devices));
+	i2c_register_board_info(MSM_GSBI1_QUP_I2C_BUS_ID,
+			i2c_tps65200_devices, ARRAY_SIZE(i2c_tps65200_devices));
 #ifdef CONFIG_MSM_CAMERA
 	i2c_register_board_info(MSM_GSBI0_QUP_I2C_BUS_ID,
 			i2c_camera_devices,
@@ -1938,9 +1967,9 @@ static void __init pico_init(void)
 	pico_wifi_init();
 
 #ifdef CONFIG_MSM_RPC_VIBRATOR
-	msm_init_pmic_vibrator(3000); //cute_prince: Fixed msm_init_pmic_vibrator()
+	msm_init_pmic_vibrator(3000);
 #endif
-#ifdef CONFIG_USB_G_ANDROID //cute_prince: CONFIG_USB_ANDROID is depreciated in Kernel 3.x. Used CONFIG_USB_G_ANDROID instead
+#ifdef CONFIG_USB_G_ANDROID
 	pico_add_usb_devices();
 #endif
 #ifdef CONFIG_MSM_HTC_DEBUG_INFO
@@ -1963,7 +1992,6 @@ static void __init pico_fixup(struct machine_desc *desc, struct tag *tags,
 	mi->bank[0].start = MSM_LINUX_BASE;
 	mi->bank[0].size = MSM_LINUX_SIZE;
 }
-
 
 MACHINE_START(PICO, "pico")
 	.boot_params	= PHYS_OFFSET + 0x100,

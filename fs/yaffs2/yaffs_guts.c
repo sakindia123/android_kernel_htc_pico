@@ -1532,7 +1532,7 @@ static struct yaffs_cache *yaffs_grab_chunk_cache(struct yaffs_dev *dev)
 
 			/* With locking we can't assume we can use entry zero */
 
-			the_obj = dev->cache[0].object;
+			the_obj = NULL;
 			usage = -1;
 			cache = NULL;
 			pushout = -1;
@@ -1549,7 +1549,7 @@ static struct yaffs_cache *yaffs_grab_chunk_cache(struct yaffs_dev *dev)
 				}
 			}
 
-			if (the_obj && (!cache || cache->dirty)) {
+			if (!cache || cache->dirty) {
 				/* Flush and try again */
 				yaffs_flush_file_cache(the_obj);
 				cache = yaffs_grab_chunk_worker(dev);
@@ -1916,15 +1916,12 @@ static int yaffs_new_obj_id(struct yaffs_dev *dev)
 
 	u32 n = (u32) bucket;
 
-	WARN(bucket >= sizeof(dev->obj_bucket), "Nice bucket not found!\n");
-
 	/* yaffs_check_obj_hash_sane();  */
 
 	while (!found) {
 		found = 1;
 		n += YAFFS_NOBJECT_BUCKETS;
-		if ((bucket < sizeof(dev->obj_bucket)) &&
-		    (1 || dev->obj_bucket[bucket].count > 0)) {
+		if (1 || dev->obj_bucket[bucket].count > 0) {
 			list_for_each(i, &dev->obj_bucket[bucket].list) {
 				/* If there is already one in the list */
 				if (i && list_entry(i, struct yaffs_obj,
@@ -4085,13 +4082,11 @@ static int yaffs_unlink_worker(struct yaffs_obj *obj)
 
 	int del_now = 0;
 
-	if (!obj)
-		return YAFFS_FAIL;
-
 	if (!obj->my_inode)
 		del_now = 1;
 
-	yaffs_update_parent(obj->parent);
+	if (obj)
+		yaffs_update_parent(obj->parent);
 
 	if (obj->variant_type == YAFFS_OBJECT_TYPE_HARDLINK) {
 		return yaffs_del_link(obj);

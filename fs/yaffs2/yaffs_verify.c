@@ -163,8 +163,8 @@ void yaffs_verify_blocks(struct yaffs_dev *dev)
 }
 
 /*
- * Verify the object header. oh must be valid, but obj and tags may be NULL in
- * which case those tests will not be performed.
+ * Verify the object header. oh must be valid, but obj and tags may be NULL in which
+ * case those tests will not be performed.
  */
 void yaffs_verify_oh(struct yaffs_obj *obj, struct yaffs_obj_hdr *oh,
 		     struct yaffs_ext_tags *tags, int parent_check)

@@ -2,8 +2,7 @@
  *
  * Copyright (C) 2008 Google, Inc.
  * Copyright (c) 2009-2011, Code Aurora Forum. All rights reserved.
- * Copyright (c) 2009-2012, Code Aurora Forum. All rights reserved.
-* Author: Brian Swetland <swetland@google.com>
+ * Author: Brian Swetland <swetland@google.com>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -61,6 +60,11 @@
 #define phy_id_state_c(ints)	(phy_id_state((ints)) == PHY_ID_C)
 #endif
 
+enum hsusb_phy_type {
+	UNDEFINED,
+	INTEGRATED,
+	EXTERNAL,
+};
 /* used to detect the OTG Mode */
 enum otg_mode {
 	OTG_ID = 0,   		/* ID pin detection */
@@ -73,6 +77,18 @@ enum usb_mode {
 	USB_HOST_MODE,
 	USB_PERIPHERAL_MODE,
 };
+struct usb_function_map {
+	char name[20];
+	unsigned bit_pos;
+};
+
+#ifdef CONFIG_USB_FUNCTION
+/* platform device data for msm_hsusb driver */
+struct usb_composition {
+	__u16   product_id;
+	unsigned long functions;
+};
+#endif
 
 enum chg_type {
 	USB_CHG_TYPE__SDP,
@@ -124,61 +140,6 @@ struct msm_hsusb_gadget_platform_data {
 	int is_phy_status_timer_on;
 };
 
-struct msm_otg_platform_data {
-	int (*rpc_connect)(int);
-	int (*phy_reset)(void __iomem *);
-	int pmic_vbus_irq;
-	int pmic_id_irq;
-	/* if usb link is in sps there is no need for
-	 * usb pclk as dayatona fabric clock will be
-	 * used instead
-	 */
-	int usb_in_sps;
-	enum pre_emphasis_level	pemp_level;
-	enum cdr_auto_reset	cdr_autoreset;
-	enum hs_drv_amplitude	drv_ampl;
-	enum se1_gate_state	se1_gating;
-	int			hsdrvslope;
-	int			phy_reset_sig_inverted;
-	int			phy_can_powercollapse;
-	int			pclk_required_during_lpm;
-	int			bam_disable;
-	/* HSUSB core in 8660 has the capability to gate the
-	 * pclk when not being used. Though this feature is
-	 * now being disabled because of H/w issues
-	 */
-	int			pclk_is_hw_gated;
-
-	int (*ldo_init) (int init);
-	int (*ldo_enable) (int enable);
-	int (*ldo_set_voltage) (int mV);
-
-	u32 			swfi_latency;
-	/* pmic notfications apis */
-	int (*pmic_vbus_notif_init) (void (*callback)(int online), int init);
-	int (*pmic_id_notif_init) (void (*callback)(int online), int init);
-	int (*phy_id_setup_init) (int init);
-	int (*pmic_register_vbus_sn) (void (*callback)(int online));
-	void (*pmic_unregister_vbus_sn) (void (*callback)(int online));
-	int (*pmic_enable_ldo) (int);
-	int (*init_gpio)(int on);
-	void (*setup_gpio)(enum usb_switch_control mode);
-	u8      otg_mode;
-	u8	usb_mode;
-	void (*vbus_power) (unsigned phy_info, int on);
-
-	/* charger notification apis */
-	void (*chg_connected)(enum chg_type chg_type);
-	void (*chg_vbus_draw)(unsigned ma);
-	int  (*chg_init)(int init);
-	int (*config_vddcx)(int high);
-	int (*init_vddcx)(int init);
-	/* 1 : uart, 0 : usb */
-	void (*usb_uart_switch)(int);
-
-	struct pm_qos_request_list pm_qos_req_dma;
-};
-
 struct msm_hsusb_platform_data {
 	__u16   version;
 	unsigned phy_info;
@@ -217,6 +178,59 @@ struct msm_hsusb_platform_data {
 	unsigned int ac_9v_gpio;
 };
 
+struct msm_otg_platform_data {
+	int (*rpc_connect)(int);
+	int (*phy_reset)(void __iomem *);
+	unsigned int core_clk;
+	int pmic_vbus_irq;
+	/* if usb link is in sps there is no need for
+	 * usb pclk as dayatona fabric clock will be
+	 * used instead
+	 */
+	int usb_in_sps;
+	enum pre_emphasis_level	pemp_level;
+	enum cdr_auto_reset	cdr_autoreset;
+	enum hs_drv_amplitude	drv_ampl;
+	enum se1_gate_state	se1_gating;
+	int			hsdrvslope;
+	int			phy_reset_sig_inverted;
+	int			phy_can_powercollapse;
+	int			pclk_required_during_lpm;
+
+	/* HSUSB core in 8660 has the capability to gate the
+	 * pclk when not being used. Though this feature is
+	 * now being disabled because of H/w issues
+	 */
+	int			pclk_is_hw_gated;
+	char			*pclk_src_name;
+
+	int (*ldo_init) (int init);
+	int (*ldo_enable) (int enable);
+	int (*ldo_set_voltage) (int mV);
+
+	u32 			swfi_latency;
+	/* pmic notfications apis */
+	int (*pmic_vbus_notif_init) (void (*callback)(int online), int init);
+	int (*pmic_id_notif_init) (void (*callback)(int online), int init);
+	int (*pmic_register_vbus_sn) (void (*callback)(int online));
+	void (*pmic_unregister_vbus_sn) (void (*callback)(int online));
+	int (*pmic_enable_ldo) (int);
+	int (*init_gpio)(int on);
+	void (*setup_gpio)(enum usb_switch_control mode);
+	u8      otg_mode;
+	u8	usb_mode;
+	void (*vbus_power) (unsigned phy_info, int on);
+
+	/* charger notification apis */
+	void (*chg_connected)(enum chg_type chg_type);
+	void (*chg_vbus_draw)(unsigned ma);
+	int  (*chg_init)(int init);
+	int (*config_vddcx)(int high);
+	int (*init_vddcx)(int init);
+
+	struct pm_qos_request_list pm_qos_req_dma;
+};
+
 struct msm_usb_host_platform_data {
 	unsigned phy_info;
 	unsigned int power_budget;
@@ -225,8 +239,5 @@ struct msm_usb_host_platform_data {
 	int  (*vbus_init)(int init);
 	struct clk *ebi1_clk;
 };
-
-void htc_mode_enable(int enable);
-int check_htc_mode_status(void);
 
 #endif

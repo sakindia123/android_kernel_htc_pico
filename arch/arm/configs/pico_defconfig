@@ -915,6 +915,7 @@ CONFIG_MTD_CFI_I2=y
 #
 # Self-contained MTD device drivers
 #
+CONFIG_MTD_MSM_NAND=y
 # CONFIG_MTD_SLRAM is not set
 # CONFIG_MTD_PHRAM is not set
 # CONFIG_MTD_MTDRAM is not set
@@ -923,6 +924,9 @@ CONFIG_MTD_CFI_I2=y
 #
 # Disk-On-Chip Device Drivers
 #
+# CONFIG_MTD_DOC2000 is not set
+# CONFIG_MTD_DOC2001 is not set
+# CONFIG_MTD_DOC2001PLUS is not set
 CONFIG_MTD_NAND_IDS=y
 # CONFIG_MTD_NAND is not set
 # CONFIG_MTD_ONENAND is not set

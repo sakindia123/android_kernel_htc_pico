@@ -34,6 +34,7 @@
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/partitions.h>
 #include <linux/mtd/map.h>
+#include <linux/mtd/partitions.h>
 
 #include <asm/uaccess.h>
 
@@ -320,7 +321,6 @@ static ssize_t mtd_write(struct file *file, const char __user *buf, size_t count
 			ops.mode = MTD_OOB_RAW;
 			ops.datbuf = kbuf;
 			ops.oobbuf = NULL;
-			ops.ooboffs = 0;
 			ops.len = len;
 
 			ret = mtd->write_oob(mtd, *ppos, &ops);
@@ -905,6 +905,9 @@ static int mtd_ioctl(struct file *file, u_int cmd, u_long arg)
 
 	case ECCGETSTATS:
 	{
+#ifdef CONFIG_MTD_LAZYECCSTATS
+		part_fill_badblockstats(mtd);
+#endif
 		if (copy_to_user(argp, &mtd->ecc_stats,
 				 sizeof(struct mtd_ecc_stats)))
 			return -EFAULT;
@@ -1193,7 +1196,7 @@ err_unregister_chdev:
 static void __exit cleanup_mtdchar(void)
 {
 	unregister_mtd_user(&mtdchar_notifier);
-	mntput(mtd_inode_mnt);
+	kern_unmount(mtd_inode_mnt);
 	unregister_filesystem(&mtd_inodefs_type);
 	__unregister_chrdev(MTD_CHAR_MAJOR, 0, 1 << MINORBITS, "mtd");
 }

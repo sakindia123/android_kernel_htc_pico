@@ -773,7 +773,7 @@ static int psensor_enable(struct cm3628_info *lpi)
 	cmd = ( lpi->ps_conf1_val | CM3628_PS_INT_EN);
 	enable_ps_int(cmd);
 
-	ret = set_irq_wake(lpi->irq, 1);
+	ret = irq_set_irq_wake(lpi->irq, 1);
 	if (ret < 0) {
 		pr_err(
 			"[PS][CM3628 error]%s: fail to enable irq %d as wake interrupt\n",
@@ -823,7 +823,7 @@ static int psensor_disable(struct cm3628_info *lpi)
 		return 0;
 	}
 
-	ret = set_irq_wake(lpi->irq, 0);
+	ret = irq_set_irq_wake(lpi->irq, 0);
 	if (ret < 0) {
 		pr_err(
 			"[PS][CM3628 error]%s: fail to disable irq %d as wake interrupt\n",

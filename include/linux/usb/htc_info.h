@@ -55,6 +55,7 @@ extern int check_htc_mode_status(void);
 extern void android_switch_adb_ums(void);
 extern void android_switch_htc_mode(void);
 
+
 #ifdef err
 #undef err
 #endif

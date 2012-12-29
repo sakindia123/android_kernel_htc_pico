@@ -1002,24 +1002,40 @@ static unsigned int xhci_parse_exponent_interval(struct usb_device *udev,
 }
 
 /*
- * Convert bInterval expressed in frames (in 1-255 range) to exponent of
+ * Convert bInterval expressed in microframes (in 1-255 range) to exponent of
  * microframes, rounded down to nearest power of 2.
  */
-static unsigned int xhci_parse_frame_interval(struct usb_device *udev,
-		struct usb_host_endpoint *ep)
+static unsigned int xhci_microframes_to_exponent(struct usb_device *udev,
+		struct usb_host_endpoint *ep, unsigned int desc_interval,
+		unsigned int min_exponent, unsigned int max_exponent)
 {
 	unsigned int interval;
 
-	interval = fls(8 * ep->desc.bInterval) - 1;
-	interval = clamp_val(interval, 3, 10);
-	if ((1 << interval) != 8 * ep->desc.bInterval)
+	interval = fls(desc_interval) - 1;
+	interval = clamp_val(interval, min_exponent, max_exponent);
+	if ((1 << interval) != desc_interval)
 		dev_warn(&udev->dev,
 			 "ep %#x - rounding interval to %d microframes, ep desc says %d microframes\n",
 			 ep->desc.bEndpointAddress,
 			 1 << interval,
-			 8 * ep->desc.bInterval);
+			 desc_interval);
 
 	return interval;
+}
+
+static unsigned int xhci_parse_microframe_interval(struct usb_device *udev,
+		struct usb_host_endpoint *ep)
+{
+	return xhci_microframes_to_exponent(udev, ep,
+			ep->desc.bInterval, 0, 15);
+}
+
+
+static unsigned int xhci_parse_frame_interval(struct usb_device *udev,
+		struct usb_host_endpoint *ep)
+{
+	return xhci_microframes_to_exponent(udev, ep,
+			ep->desc.bInterval * 8, 3, 10);
 }
 
 /* Return the polling or NAK interval.
@@ -1040,7 +1056,7 @@ static unsigned int xhci_get_endpoint_interval(struct usb_device *udev,
 		/* Max NAK rate */
 		if (usb_endpoint_xfer_control(&ep->desc) ||
 		    usb_endpoint_xfer_bulk(&ep->desc)) {
-			interval = ep->desc.bInterval;
+			interval = xhci_parse_microframe_interval(udev, ep);
 			break;
 		}
 		/* Fall through - SS and HS isoc/int have same decoding */
@@ -1489,15 +1505,11 @@ void xhci_free_command(struct xhci_hcd *xhci,
 void xhci_mem_cleanup(struct xhci_hcd *xhci)
 {
 	struct pci_dev	*pdev = to_pci_dev(xhci_to_hcd(xhci)->self.controller);
+	struct xhci_cd  *cur_cd, *next_cd;
 	int size;
 	int i;
 
 	/* Free the Event Ring Segment Table and the actual Event Ring */
-	if (xhci->ir_set) {
-		xhci_writel(xhci, 0, &xhci->ir_set->erst_size);
-		xhci_write_64(xhci, 0, &xhci->ir_set->erst_base);
-		xhci_write_64(xhci, 0, &xhci->ir_set->erst_dequeue);
-	}
 	size = sizeof(struct xhci_erst_entry)*(xhci->erst.num_entries);
 	if (xhci->erst.entries)
 		pci_free_consistent(pdev, size,
@@ -1509,11 +1521,16 @@ void xhci_mem_cleanup(struct xhci_hcd *xhci)
 	xhci->event_ring = NULL;
 	xhci_dbg(xhci, "Freed event ring\n");
 
-	xhci_write_64(xhci, 0, &xhci->op_regs->cmd_ring);
+	xhci->cmd_ring_reserved_trbs = 0;
 	if (xhci->cmd_ring)
 		xhci_ring_free(xhci, xhci->cmd_ring);
 	xhci->cmd_ring = NULL;
 	xhci_dbg(xhci, "Freed command ring\n");
+	list_for_each_entry_safe(cur_cd, next_cd,
+			&xhci->cancel_cmd_list, cancel_cmd_list) {
+		list_del(&cur_cd->cancel_cmd_list);
+		kfree(cur_cd);
+	}
 
 	for (i = 1; i < MAX_HC_SLOTS; ++i)
 		xhci_free_virt_device(xhci, i);
@@ -1538,7 +1555,6 @@ void xhci_mem_cleanup(struct xhci_hcd *xhci)
 	xhci->medium_streams_pool = NULL;
 	xhci_dbg(xhci, "Freed medium stream array pool\n");
 
-	xhci_write_64(xhci, 0, &xhci->op_regs->dcbaa_ptr);
 	if (xhci->dcbaa)
 		pci_free_consistent(pdev, sizeof(*xhci->dcbaa),
 				xhci->dcbaa, xhci->dcbaa->dma);
@@ -2004,6 +2020,7 @@ int xhci_mem_init(struct xhci_hcd *xhci, gfp_t flags)
 	xhci->cmd_ring = xhci_ring_alloc(xhci, 1, true, false, flags);
 	if (!xhci->cmd_ring)
 		goto fail;
+	INIT_LIST_HEAD(&xhci->cancel_cmd_list);
 	xhci_dbg(xhci, "Allocated command ring at %p\n", xhci->cmd_ring);
 	xhci_dbg(xhci, "First segment DMA is 0x%llx\n",
 			(unsigned long long)xhci->cmd_ring->first_seg->dma);
@@ -2107,6 +2124,8 @@ int xhci_mem_init(struct xhci_hcd *xhci, gfp_t flags)
 
 fail:
 	xhci_warn(xhci, "Couldn't initialize memory\n");
+	xhci_halt(xhci);
+	xhci_reset(xhci);
 	xhci_mem_cleanup(xhci);
 	return -ENOMEM;
 }

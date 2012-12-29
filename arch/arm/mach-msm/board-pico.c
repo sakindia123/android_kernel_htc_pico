@@ -19,12 +19,18 @@
 #include <mach/system.h>
 #include <mach/board.h>
 #include <mach/msm_iomap.h>
+#ifdef CONFIG_USB_MSM_OTG_72K
 #include <mach/msm_hsusb.h>
+#else
+#include <linux/usb/msm_hsusb.h>
+#endif
 #include <mach/htc_usb.h>
 #include <mach/rpc_hsusb.h>
 #include <mach/rpc_pmapp.h>
+#ifdef CONFIG_USB_G_ANDROID
+#include <linux/usb/android_composite.h>
 #include <mach/usbdiag.h>
-#include <mach/usb_gadget_fserial.h>
+#endif
 #include <mach/msm_memtypes.h>
 #include <mach/msm_serial_hs.h>
 #include <mach/msm_serial_debugger.h>
@@ -51,10 +57,7 @@
 #include <mach/vreg.h>
 #include <linux/power_supply.h>
 #include <mach/rpc_pmapp.h>
-
-#ifdef CONFIG_BATTERY_MSM
 #include <mach/msm_battery.h>
-#endif
 #include <linux/smsc911x.h>
 #include "devices.h"
 #include "timer.h"
@@ -248,7 +251,6 @@ static struct msm_otg_platform_data msm_otg_pdata = {
 	.vbus_power		 = msm_hsusb_vbus_power,
 #endif
 	.rpc_connect		 = hsusb_rpc_connect,
-	.core_clk		 = 1,
 	.pemp_level		 = PRE_EMPHASIS_WITH_20_PERCENT,
 	.cdr_autoreset		 = CDR_AUTO_RESET_DISABLE,
 	.drv_ampl		 = HS_DRV_AMPLITUDE_DEFAULT,
@@ -257,6 +259,44 @@ static struct msm_otg_platform_data msm_otg_pdata = {
 #endif
 
 #ifdef CONFIG_USB_G_ANDROID
+
+static struct android_usb_platform_data android_usb_pdata = {
+	.vendor_id		= 0x0bb4,
+	.product_id		= 0x0cc9,
+	.version		= 0x0100,
+	.product_name		= "Android Phone",
+	.manufacturer_name	= "HTC",
+	.num_products		= ARRAY_SIZE(usb_products),
+	.products		= usb_products,
+	.num_functions		= ARRAY_SIZE(usb_functions_all),
+	.functions		= usb_functions_all,
+	.fserial_init_string	= "tty:modem,tty,tty:serial",
+	.nluns			= 1,
+	.usb_id_pin_gpio	= PICO_GPIO_USB_ID_PIN,
+};
+
+static struct platform_device android_usb_device = {
+	.name	= "android_usb",
+	.id	= -1,
+	.dev	= {
+		.platform_data = &android_usb_pdata,
+	},
+};
+
+#endif
+
+#ifdef CONFIG_SERIAL_MSM_HS
+static struct msm_serial_hs_platform_data msm_uart_dm1_pdata = {
+	.inject_rx_on_wakeup = 0,
+	.cpu_lock_supported = 1,
+
+	/* for bcm */
+	.bt_wakeup_pin_supported = 1,
+	.bt_wakeup_pin = PICO_GPIO_BT_CHIP_WAKE,
+	.host_wakeup_pin = PICO_GPIO_BT_HOST_WAKE,
+};
+#endif
+
 static int pico_phy_init_seq[] =
 {
 	0x2C, 0x31,
@@ -266,40 +306,9 @@ static int pico_phy_init_seq[] =
 	-1
 };
 
-/* TODO
-static void pico_phy_reset(void)
-{
-	int ret;
-
-	printk(KERN_INFO "msm_hsusb_phy_reset\n");
-	ret = msm_proc_comm(PCOM_MSM_HSUSB_PHY_RESET,
-			NULL, NULL);
-	if (ret)
-		printk(KERN_INFO "%s failed\n", __func__);
-}
-*/
-
-static struct msm_hsusb_platform_data msm_hsusb_pdata = {
+static struct msm_hsusb_gadget_platform_data msm_gadget_pdata = {
 	.phy_init_seq		= pico_phy_init_seq,
-/* TODO
-	.phy_reset		= pico_phy_reset,
-*/
-	.usb_id_pin_gpio	= PICO_GPIO_USB_ID_PIN,
-};
-
-static struct usb_mass_storage_platform_data mass_storage_pdata = {
-	.nluns		= 1,
-	.vendor		= "HTC",
-	.product	= "Android Phone",
-	.release	= 0x0100,
-};
-
-static struct platform_device usb_mass_storage_device = {
-	.name	= "usb_mass_storage",
-	.id	= -1,
-	.dev	= {
-		.platform_data = &mass_storage_pdata,
-	},
+	.is_phy_status_timer_on = 1,
 };
 
 static struct htc_battery_platform_data htc_battery_pdev_data = {
@@ -326,67 +335,6 @@ static struct i2c_board_info i2c_tps65200_devices[] = {
 		.platform_data = &tps65200_data,
 	},
 };
-
-
-static struct android_usb_platform_data android_usb_pdata = {
-	.vendor_id		= 0x0bb4,
-	.product_id		= 0x0cc9,
-	.version		= 0x0100,
-	.product_name		= "Android Phone",
-	.manufacturer_name	= "HTC",
-	.num_products		= ARRAY_SIZE(usb_products),
-	.products		= usb_products,
-	.num_functions		= ARRAY_SIZE(usb_functions_all),
-	.functions		= usb_functions_all,
-};
-
-static struct platform_device android_usb_device = {
-	.name	= "android_usb",
-	.id	= -1,
-	.dev	= {
-		.platform_data = &android_usb_pdata,
-	},
-};
-
-void pico_add_usb_devices(void)
-{
-	printk(KERN_INFO "%s\n", __func__);
-	android_usb_pdata.products[0].product_id =
-		android_usb_pdata.product_id;
-	msm_hsusb_pdata.serial_number = board_serialno();
-	android_usb_pdata.serial_number = board_serialno();
-	if (msm_hsusb_pdata.usb_id_pin_gpio != 0)
-		android_usb_pdata.usb_id_pin_gpio = msm_hsusb_pdata.usb_id_pin_gpio;
-
-#ifdef CONFIG_USB_MSM_OTG_72K
-	msm_device_otg.dev.platform_data = &msm_otg_pdata;
-	platform_device_register(&msm_device_otg);
-#endif
-
-#ifdef CONFIG_USB_EHCI_MSM_72K
-	msm_device_hsusb_host.dev.platform_data = &msm_usb_host_pdata;
-	platform_device_register(&msm_device_hsusb_host);
-#endif
-
-	msm_device_gadget_peripheral.dev.platform_data = &msm_hsusb_pdata;
-	platform_device_register(&msm_device_gadget_peripheral);
-	platform_device_register(&usb_mass_storage_device);
-	platform_device_register(&android_usb_device);
-}
-#endif
-
-
-#ifdef CONFIG_SERIAL_MSM_HS
-static struct msm_serial_hs_platform_data msm_uart_dm1_pdata = {
-	.inject_rx_on_wakeup = 0,
-	.cpu_lock_supported = 1,
-
-	/* for bcm */
-	.bt_wakeup_pin_supported = 1,
-	.bt_wakeup_pin = PICO_GPIO_BT_CHIP_WAKE,
-	.host_wakeup_pin = PICO_GPIO_BT_HOST_WAKE,
-};
-#endif
 
 #ifdef CONFIG_BT
 static struct platform_device pico_rfkill = {
@@ -806,7 +754,6 @@ static struct platform_device android_pmem_device = {
 	.dev = { .platform_data = &android_pmem_pdata },
 };
 
-#ifdef CONFIG_BATTERY_MSM
 static u32 msm_calculate_batt_capacity(u32 current_voltage);
 
 static struct msm_psy_batt_pdata msm_psy_batt_data = {
@@ -831,7 +778,6 @@ static struct platform_device msm_batt_device = {
 	.id                 = -1,
 	.dev.platform_data  = &msm_psy_batt_data,
 };
-#endif
 
 #ifdef CONFIG_MSM_CAMERA
 // HTC_START
@@ -1251,9 +1197,7 @@ static struct platform_device *pico_devices[] __initdata = {
 	&android_pmem_adsp_device,
 	&usb_gadget_fserial_device,
 	&msm_device_adspdec,
-#ifdef CONFIG_BATTERY_MSM
 	&msm_batt_device,
-#endif
 	&htc_headset_mgr,
 #ifdef CONFIG_S5K4E1
 	&msm_camera_sensor_s5k4e1,
@@ -1855,11 +1799,39 @@ static void pico_reset(void)
 	gpio_set_value(PICO_GPIO_PS_HOLD, 0);
 }
 
+void pico_add_usb_devices(void)
+{
+	printk(KERN_INFO "%s rev: %d\n", __func__, system_rev);
+	android_usb_pdata.products[0].product_id =
+			android_usb_pdata.product_id;
+	msm_device_gadget_peripheral.dev.platform_data = &msm_gadget_pdata;
+
+#ifdef CONFIG_USB_MSM_OTG_72K
+	msm_device_otg.dev.platform_data = &msm_otg_pdata;
+	platform_device_register(&msm_device_otg);
+#endif
+
+#ifdef CONFIG_USB_EHCI_MSM_72K
+	msm_device_hsusb_host.dev.platform_data = &msm_usb_host_pdata;
+	platform_device_register(&msm_device_hsusb_host);
+#endif
+	platform_device_register(&msm_device_gadget_peripheral);
+	platform_device_register(&android_usb_device);
+}
+
+static int __init board_serialno_setup(char *serialno)
+{
+	android_usb_pdata.serial_number = serialno;
+	return 1;
+}
+__setup("androidboot.serialno=", board_serialno_setup);
+
 static void __init pico_init(void)
 {
 	int rc = 0;
 	struct kobject *properties_kobj;
-
+        uint32_t soc_version = 0;
+        soc_version = socinfo_get_version();
 	msm7x2x_misc_init();
 
 	printk(KERN_INFO "pico_init() revision = 0x%x\n", system_rev);
@@ -1890,9 +1862,18 @@ static void __init pico_init(void)
 #endif
 
 #ifdef CONFIG_USB_MSM_OTG_72K
+        if (SOCINFO_VERSION_MAJOR(soc_version) >= 2 &&
+			SOCINFO_VERSION_MINOR(soc_version) >= 1) {
+		pr_debug("%s: SOC Version:2.(1 or more)\n", __func__);
+		msm_otg_pdata.ldo_set_voltage = 0;
+	}
+
+#ifdef CONFIG_USB_GADGET
 	msm_otg_pdata.swfi_latency =
 		msm7x27a_pm_data
 		[MSM_PM_SLEEP_MODE_RAMP_DOWN_AND_WAIT_FOR_INTERRUPT].latency;
+        msm_device_gadget_peripheral.dev.platform_data = &msm_gadget_pdata;
+#endif
 #endif
 	headset_init();
 	platform_add_devices(msm_footswitch_devices,
@@ -1942,13 +1923,8 @@ static void __init pico_init(void)
 
 	pico_init_keypad();
 	pico_wifi_init();
-
-#ifdef CONFIG_MSM_RPC_VIBRATOR
 	msm_init_pmic_vibrator(3000);
-#endif
-#ifdef CONFIG_USB_G_ANDROID
 	pico_add_usb_devices();
-#endif
 #ifdef CONFIG_MSM_HTC_DEBUG_INFO
 	htc_debug_info_init();
 #endif

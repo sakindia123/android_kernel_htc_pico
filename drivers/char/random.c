@@ -1347,3 +1347,22 @@ randomize_range(unsigned long start, unsigned long end, unsigned long len)
 		return 0;
 	return PAGE_ALIGN(get_random_int() % range + start);
 }
+
+/*
+ * Add device- or boot-specific data to the input and nonblocking
+ * pools to help initialize them to unique values.
+ *
+ * None of this adds any entropy, it is meant to avoid the
+ * problem of the nonblocking pool having similar initial state
+ * across largely identical devices.
+ */
+void add_device_randomness(const void *buf, unsigned int size)
+{
+	unsigned long time = get_cycles() ^ jiffies;
+
+	mix_pool_bytes_extract(&input_pool, buf, size, NULL);
+	mix_pool_bytes_extract(&input_pool, &time, sizeof(time), NULL);
+	mix_pool_bytes_extract(&nonblocking_pool, buf, size, NULL);
+	mix_pool_bytes_extract(&nonblocking_pool, &time, sizeof(time), NULL);
+}
+EXPORT_SYMBOL(add_device_randomness);

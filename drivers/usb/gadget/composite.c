@@ -27,9 +27,7 @@
 #include <linux/utsname.h>
 
 #include <linux/usb/composite.h>
-/*USB-IF failed because mute uevent if switching usb functions without vbus changes.
-For this case, driver needs to send uevent to notfiy mtp service*/
-static bool is_mtp_enabled;
+
 
 /*
  * The code in this file is utility code, used to build a gadget driver
@@ -1107,7 +1105,26 @@ static void composite_disconnect(struct usb_gadget *gadget)
 	spin_lock_irqsave(&cdev->lock, flags);
 	if (cdev->config)
 		reset_config(cdev);
+	if (composite->disconnect)
+		composite->disconnect(cdev);
+	if (cdev->delayed_status != 0) {
+		WARN(cdev, "%s: delayed_status is not 0 in disconnect status\n", __func__);
+		cdev->delayed_status = 0;
+	}
+	spin_unlock_irqrestore(&cdev->lock, flags);
+}
 
+static void composite_mute_disconnect(struct usb_gadget *gadget)
+{
+	struct usb_composite_dev	*cdev = get_gadget_data(gadget);
+	unsigned long			flags;
+
+	/* REVISIT:  should we have config and device level
+	 * disconnect callbacks?
+	 */
+	spin_lock_irqsave(&cdev->lock, flags);
+	if (cdev->config)
+		reset_config(cdev);
 	if (cdev->delayed_status != 0) {
 		WARN(cdev, "%s: delayed_status is not 0 in disconnect status\n", __func__);
 		cdev->delayed_status = 0;
@@ -1335,6 +1352,8 @@ static struct usb_gadget_driver composite_driver = {
 	.unbind		= composite_unbind,
 
 	.setup		= composite_setup,
+	.disconnect	= composite_disconnect,
+	.mute_disconnect = composite_mute_disconnect,
 
 	.suspend	= composite_suspend,
 	.resume		= composite_resume,
@@ -1383,7 +1402,6 @@ int usb_composite_probe(struct usb_composite_driver *driver,
 	INIT_WORK(&cdusbcmdwork, ctusbcmd_do_work);
 	if (rc < 0)
 		pr_err("%s: switch_dev_register fail", __func__);
-
 	return usb_gadget_probe_driver(&composite_driver, composite_bind);
 }
 

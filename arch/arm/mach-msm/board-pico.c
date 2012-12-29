@@ -76,11 +76,8 @@
 #include <linux/leds-pm8029.h>
 #include "board-pico.h"
 
-#ifdef CONFIG_PERFLOCK_BOOT_LOCK
-#include <mach/perflock.h>
-#endif
-
 #ifdef CONFIG_MSM_RESERVE_PMEM
+#define PMEM_KERNEL_EBI1_SIZE  0x3A000
 #define MSM_PMEM_AUDIO_SIZE	0x5B000
 #endif
 #define BAHAMA_SLAVE_ID_FM_ADDR         0x2A
@@ -632,6 +629,52 @@ static int __init pmem_adsp_size_setup(char *p)
 early_param("pmem_adsp_size", pmem_adsp_size_setup);
 #endif
 
+#define SND(desc, num) { .name = #desc, .id = num }
+static struct snd_endpoint snd_endpoints_list[] = {
+	SND(HANDSET, 0),
+	SND(SPEAKER, 1),
+	SND(HEADSET,2),
+	SND(BT, 3),
+	SND(CARKIT, 3),
+	SND(TTY_FULL, 5),
+	SND(TTY_HEADSET, 5),
+	SND(TTY_VCO, 6),
+	SND(TTY_HCO, 7),
+	SND(NO_MIC_HEADSET, 8),
+	SND(FM_HEADSET, 9),
+	SND(HEADSET_AND_SPEAKER, 10),
+	SND(STEREO_HEADSET_AND_SPEAKER, 10),
+	SND(BT_EC_OFF, 44),
+	SND(CURRENT, 256),
+};
+#undef SND
+
+static struct msm_snd_endpoints msm_device_snd_endpoints = {
+	.endpoints = snd_endpoints_list,
+	.num = sizeof(snd_endpoints_list) / sizeof(struct snd_endpoint)
+};
+
+static struct platform_device msm_device_snd = {
+	.name = "msm_snd",
+	.id = -1,
+	.dev    = {
+		.platform_data = &msm_device_snd_endpoints
+	},
+};
+
+static struct android_pmem_platform_data android_pmem_audio_pdata = {
+	.name = "pmem_audio",
+	.allocator_type = PMEM_ALLOCATORTYPE_BITMAP,
+	.cached = 0,
+	.memory_type = MEMTYPE_EBI1,
+};
+
+static struct platform_device android_pmem_audio_device = {
+	.name = "android_pmem",
+	.id = 2,
+	.dev = { .platform_data = &android_pmem_audio_pdata },
+};
+
 #define DEC0_FORMAT ((1<<MSM_ADSP_CODEC_MP3)| \
 	(1<<MSM_ADSP_CODEC_AAC)|(1<<MSM_ADSP_CODEC_WMA)| \
 	(1<<MSM_ADSP_CODEC_WMAPRO)|(1<<MSM_ADSP_CODEC_AMRWB)| \
@@ -1171,13 +1214,12 @@ static struct platform_device *pico_devices[] __initdata = {
 	&htc_battery_pdev,
 	&android_pmem_device,
 	&android_pmem_adsp_device,
+        &android_pmem_audio_device,
+        &msm_device_snd,
 	&usb_gadget_fserial_device,
 	&msm_device_adspdec,
 	&msm_batt_device,
 	&htc_headset_mgr,
-#ifdef CONFIG_MT9E013
-	&msm_camera_sensor_mt9e013,
-#endif
 	&msm_kgsl_3d0,
 #ifdef CONFIG_BT
 	//&msm_bt_power_device,
@@ -1194,6 +1236,23 @@ static struct platform_device *pico_devices[] __initdata = {
 };
 
 #ifdef CONFIG_MSM_RESERVE_PMEM
+	
+static unsigned pmem_kernel_ebi1_size = PMEM_KERNEL_EBI1_SIZE;
+static int __init pmem_kernel_ebi1_size_setup(char *p)
+{
+	pmem_kernel_ebi1_size = memparse(p, NULL);
+	return 0;
+}
+early_param("pmem_kernel_ebi1_size", pmem_kernel_ebi1_size_setup);
+
+static unsigned pmem_audio_size = MSM_PMEM_AUDIO_SIZE;
+static int __init pmem_audio_size_setup(char *p)
+{
+	pmem_audio_size = memparse(p, NULL);
+	return 0;
+}
+early_param("pmem_audio_size", pmem_audio_size_setup);
+
 static struct memtype_reserve msm7x27a_reserve_table[] __initdata = {
 	[MEMTYPE_SMI] = {
 	},
@@ -1205,11 +1264,13 @@ static struct memtype_reserve msm7x27a_reserve_table[] __initdata = {
 	},
 };
 
+
 static void __init size_pmem_devices(void)
 {
 #ifdef CONFIG_ANDROID_PMEM
 	android_pmem_adsp_pdata.size = pmem_adsp_size;
 	android_pmem_pdata.size = pmem_mdp_size;
+        android_pmem_audio_pdata.size = pmem_audio_size;
 #endif
 }
 
@@ -1223,6 +1284,8 @@ static void __init reserve_pmem_memory(void)
 #ifdef CONFIG_ANDROID_PMEM
 	reserve_memory_for(&android_pmem_adsp_pdata);
 	reserve_memory_for(&android_pmem_pdata);
+        reserve_memory_for(&android_pmem_audio_pdata);
+        msm7x27a_reserve_table[MEMTYPE_EBI1].size += pmem_kernel_ebi1_size;
 #endif
 }
 
@@ -1802,8 +1865,8 @@ static void __init pico_init(void)
 	msm7x2x_misc_init();
 
 	printk(KERN_INFO "pico_init() revision = 0x%x\n", system_rev);
-	printk(KERN_INFO "MSM_PMEM_MDP_BASE=0x%x MSM_PMEM_ADSP_BASE=0x%x MSM_RAM_CONSOLE_BASE=0x%x MSM_FB_BASE=0x%x\n",
-		MSM_PMEM_MDP_BASE, MSM_PMEM_ADSP_BASE, MSM_RAM_CONSOLE_BASE, MSM_FB_BASE);
+//	printk(KERN_INFO "MSM_PMEM_MDP_BASE=0x%x MSM_PMEM_ADSP_BASE=0x%x MSM_RAM_CONSOLE_BASE=0x%x MSM_FB_BASE=0x%x\n",
+//		MSM_PMEM_MDP_BASE, MSM_PMEM_ADSP_BASE, MSM_RAM_CONSOLE_BASE, MSM_FB_BASE);
 	/* Must set msm_hw_reset_hook before first proc comm */
 	msm_hw_reset_hook = pico_reset;
 

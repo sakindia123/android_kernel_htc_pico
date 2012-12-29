@@ -92,9 +92,9 @@ static void set_pmic_vibrator_on(void)
 	data1 = 0x1;
 	data2 = 0x0;
 	rc = msm_proc_comm(PCOM_CUSTOMER_CMD1, &data1, &data2);
-	if (rc)
+     /* if (rc)
 		VIB_ERR_LOG("%s: data1 0x%x, rc=%d\n", __func__, data1, rc);
-	VIB_INFO_LOG("%s: - \n", __func__);
+	VIB_INFO_LOG("%s: - \n", __func__); */
 }
 static void set_pmic_vibrator_off(void){
 	int rc;
@@ -103,9 +103,9 @@ static void set_pmic_vibrator_off(void){
 	data1 = 0x0;
 	data2 = 0x0;
 	rc = msm_proc_comm(PCOM_CUSTOMER_CMD1, &data1, &data2);
-	if (rc)
+     /* if (rc)
 		VIB_ERR_LOG("%s: data1 0x%x, rc=%d\n", __func__, data1, rc);
-	VIB_INFO_LOG("%s: - \n", __func__);
+	VIB_INFO_LOG("%s: - \n", __func__); */
 }
 #endif
 

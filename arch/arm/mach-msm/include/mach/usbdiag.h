@@ -86,6 +86,12 @@ struct usb_diag_ch {
 	void *priv_usb;
 };
 
+/* platform data for usb diag */
+ struct usb_diag_platform_data {
+	char *ch_name;
+ 	int (*update_pid_and_serial_num)(uint32_t, const char *);
+ };
+
 struct usb_diag_ch *usb_diag_open(const char *name, void *priv,
 		void (*notify)(void *, unsigned, struct diag_request *));
 void usb_diag_close(struct usb_diag_ch *ch);

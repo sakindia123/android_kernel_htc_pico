@@ -127,6 +127,7 @@ struct msm_hsusb_gadget_platform_data {
 struct msm_otg_platform_data {
 	int (*rpc_connect)(int);
 	int (*phy_reset)(void __iomem *);
+        unsigned int core_clk;
 	int pmic_vbus_irq;
 	int pmic_id_irq;
 	/* if usb link is in sps there is no need for

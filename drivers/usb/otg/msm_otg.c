@@ -137,6 +137,7 @@ int usb_register_notifier(struct t_usb_status_notifier *notifier)
 	return 0;
 }
 
+
 int usb_is_connect_type_ready(void)
 {
 	if (!the_msm_otg)

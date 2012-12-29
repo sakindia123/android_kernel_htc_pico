@@ -52,7 +52,6 @@ config MTD_MS02NV
 config MTD_MSM_NAND
 	tristate "MSM NAND Device Support"
 	depends on MTD && ARCH_MSM
-        depends on MTD_NAND
 	select CRC16
 	select BITREVERSE
 	select MTD_NAND_IDS
@@ -202,7 +201,6 @@ comment "Disk-On-Chip Device Drivers"
 
 config MTD_DOC2000
 	tristate "M-Systems Disk-On-Chip 2000 and Millennium (DEPRECATED)"
-        depends on MTD_NAND
 	select MTD_DOCPROBE
 	select MTD_NAND_IDS
 	---help---
@@ -225,7 +223,6 @@ config MTD_DOC2000
 
 config MTD_DOC2001
 	tristate "M-Systems Disk-On-Chip Millennium-only alternative driver (DEPRECATED)"
-        depends on MTD_NAND
 	select MTD_DOCPROBE
 	select MTD_NAND_IDS
 	---help---
@@ -247,7 +244,6 @@ config MTD_DOC2001
 
 config MTD_DOC2001PLUS
 	tristate "M-Systems Disk-On-Chip Millennium Plus"
-        depends on MTD_NAND
 	select MTD_DOCPROBE
 	select MTD_NAND_IDS
 	---help---

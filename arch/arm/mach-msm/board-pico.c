@@ -824,14 +824,6 @@ static uint32_t camera_on_gpio_table[] = {
 // HTC_END
 };
 
-#ifdef CONFIG_MSM_CAMERA_FLASH
-static struct msm_camera_sensor_flash_src msm_flash_src = {
-	.flash_sr_type = MSM_CAMERA_FLASH_SRC_CURRENT_DRIVER,
-	._fsrc.current_driver_src.led1 = GPIO_SURF_CAM_GP_LED_EN1,
-	._fsrc.current_driver_src.led2 = GPIO_SURF_CAM_GP_LED_EN2,
-};
-#endif
-
 //HTC_START
 //For pico camera power control
 static struct vreg *vreg_wlan4;
@@ -1116,9 +1108,6 @@ static struct msm_camera_sensor_platform_info mt9t013_sensor_7627a_info = {
 // PG-POWER_SEQ-00-{
 static struct msm_camera_sensor_flash_data flash_mt9t013 = {
 	.flash_type = MSM_CAMERA_FLASH_NONE,
-#ifdef CONFIG_MSM_CAMERA_FLASH
-	.flash_src  = &msm_flash_src
-#endif
 };
 // PG-POWER_SEQ-00-}
 static struct msm_camera_sensor_info msm_camera_sensor_mt9t013_data = {
@@ -1154,19 +1143,6 @@ static struct i2c_board_info i2c_camera_devices[] = {
 };
 #endif
 
-#ifdef CONFIG_PERFLOCK_BOOT_LOCK
-static unsigned pico_perf_acpu_table[] = {
-       245760000,
-       480000000,
-       600000000,
-};
-
-static struct perflock_platform_data holiday_perflock_data = {
-       .perf_acpu_table = pico_perf_acpu_table,
-       .table_size = ARRAY_SIZE(pico_perf_acpu_table),
-};
-#endif
-
 static struct resource ram_console_resources[] = {
 	{
 		.start  = MSM_RAM_CONSOLE_BASE,
@@ -1199,15 +1175,6 @@ static struct platform_device *pico_devices[] __initdata = {
 	&msm_device_adspdec,
 	&msm_batt_device,
 	&htc_headset_mgr,
-#ifdef CONFIG_S5K4E1
-	&msm_camera_sensor_s5k4e1,
-#endif
-#ifdef CONFIG_IMX072
-	&msm_camera_sensor_imx072,
-#endif
-#ifdef CONFIG_WEBCAM_OV9726
-	&msm_camera_sensor_ov9726,
-#endif
 #ifdef CONFIG_MT9E013
 	&msm_camera_sensor_mt9e013,
 #endif

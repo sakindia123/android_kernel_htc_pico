@@ -31,9 +31,6 @@
 
 #include "u_ether.h"
 
-#ifdef CONFIG_USB_ETH_PASS_FW
-#include "passthru.h"
-#endif
 
 /*
  * This component encapsulates the Ethernet link glue needed to provide
@@ -114,13 +111,6 @@ static inline int qlen(struct usb_gadget *gadget)
 	else
 		return DEFAULT_QLEN;
 }
-
-/*-------------------------------------------------------------------------*/
-#ifdef CONFIG_USB_ETH_PASS_FW
-static unsigned ipt_cap = 0;
-module_param(ipt_cap, uint, S_IRUGO|S_IWUSR);
-MODULE_PARM_DESC(ipt_cap, "Enable IPT encapsulation");
-#endif
 
 /*-------------------------------------------------------------------------*/
 
@@ -326,11 +316,6 @@ static void rx_complete(struct usb_ep *ep, struct usb_request *req)
 				dev_kfree_skb_any(skb2);
 				goto next_frame;
 			}
-
-#ifdef CONFIG_USB_ETH_PASS_FW
-			ipt_decap_packet(skb2, ipt_cap);
-#endif
-
 			skb2->protocol = eth_type_trans(skb2, dev->net);
 			dev->net->stats.rx_packets++;
 			dev->net->stats.rx_bytes += skb2->len;
@@ -558,11 +543,6 @@ static netdev_tx_t eth_start_xmit(struct sk_buff *skb,
 		/* ignores USB_CDC_PACKET_TYPE_DIRECTED */
 	}
 
-#ifdef CONFIG_USB_ETH_PASS_FW
-	if (ipt_encap_packet(skb, ipt_cap))
-		return NETDEV_TX_OK;
-#endif
-
 	spin_lock_irqsave(&dev->req_lock, flags);
 	/*
 	 * this freelist can be empty if an interrupt triggered disconnect()
@@ -677,10 +657,6 @@ static int eth_open(struct net_device *net)
 		link->open(link);
 	spin_unlock_irq(&dev->lock);
 
-#ifdef CONFIG_USB_ETH_PASS_FW
-	ipt_open(net);
-#endif
-
 	return 0;
 }
 
@@ -688,11 +664,6 @@ static int eth_stop(struct net_device *net)
 {
 	struct eth_dev	*dev = netdev_priv(net);
 	unsigned long	flags;
-
-#ifdef CONFIG_USB_ETH_PASS_FW
-	ipt_close();
-    ipt_cap = 0;
-#endif
 
 	VDBG(dev, "%s\n", __func__);
 	netif_stop_queue(net);
@@ -855,12 +826,6 @@ int gether_setup_name(struct usb_gadget *g, u8 ethaddr[ETH_ALEN],
 
 	SET_ETHTOOL_OPS(net, &ops);
 
-	/* two kinds of host-initiated state changes:
-	 *  - iff DATA transfer is active, carrier is "on"
-	 *  - tx queueing enabled if open *and* carrier is "on"
-	 */
-	netif_carrier_off(net);
-
 	dev->gadget = g;
 	SET_NETDEV_DEV(net, &g->dev);
 	SET_NETDEV_DEVTYPE(net, &gadget_type);
@@ -874,6 +839,12 @@ int gether_setup_name(struct usb_gadget *g, u8 ethaddr[ETH_ALEN],
 		INFO(dev, "HOST MAC %pM\n", dev->host_mac);
 
 		the_dev = dev;
+
+		/* two kinds of host-initiated state changes:
+		 *  - iff DATA transfer is active, carrier is "on"
+		 *  - tx queueing enabled if open *and* carrier is "on"
+		 */
+		netif_carrier_off(net);
 	}
 
 	return status;

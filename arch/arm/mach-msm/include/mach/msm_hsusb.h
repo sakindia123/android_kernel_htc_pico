@@ -127,7 +127,6 @@ struct msm_hsusb_gadget_platform_data {
 struct msm_otg_platform_data {
 	int (*rpc_connect)(int);
 	int (*phy_reset)(void __iomem *);
-        unsigned int core_clk;
 	int pmic_vbus_irq;
 	int pmic_id_irq;
 	/* if usb link is in sps there is no need for
@@ -178,44 +177,6 @@ struct msm_otg_platform_data {
 	void (*usb_uart_switch)(int);
 
 	struct pm_qos_request_list pm_qos_req_dma;
-};
-
-struct msm_hsusb_platform_data {
-	__u16   version;
-	unsigned phy_info;
-	__u16   vendor_id;
-	char   	*product_name;
-	char   	*serial_number;
-	char   	*manufacturer_name;
-	struct usb_composition *compositions;
-	int num_compositions;
-	struct usb_function_map *function_map;
-	int num_functions;
-	/* gpio mux function used for LPM */
-	int (*config_gpio)(int config);
-	/* ROC info for AHB Mode */
-	unsigned int soc_version;
-
-	int *phy_init_seq;
-	void (*phy_reset)(void __iomem *addr);
-	/* 1 : uart, 0 : usb */
-	void (*usb_uart_switch)(int uart);
-
-	unsigned int core_clk;
-
-	int vreg5v_required;
-
-	u32 swfi_latency;
-
-	void (*change_phy_voltage)(int);
-	void (*usb_host_switch)(int host);
-	void (*configure_ac_9v_gpio)(int);
-
-	u8 accessory_detect;
-	u8 accessory_type;
-	unsigned int usb_id_pin_gpio;
-	unsigned int usb_id2_pin_gpio;
-	unsigned int ac_9v_gpio;
 };
 
 struct msm_usb_host_platform_data {

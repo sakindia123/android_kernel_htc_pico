@@ -172,13 +172,9 @@ struct msm_otg_platform_data {
 	/* This flag is against the condition that PHY fail into lpm when DCP is attached. */
 	int reset_phy_before_lpm;
 	bool phy_notify_enabled;
-	/* 1 : uart, 0 : usb */
 	void (*usb_uart_switch)(int uart);
 	int (*rpc_connect)(int connect);
 	int (*phy_reset)(void);
-	void (*usb_hub_enable)(bool);
-	void (*serial_debug_gpios)(int);
-	int (*china_ac_detect)(void);
 };
 
 /**
@@ -263,7 +259,6 @@ struct msm_otg {
 #define PHY_RETENTIONED			BIT(1)
 #define PHY_OTG_COMP_DISABLED		BIT(2)
 	struct work_struct notifier_work;
-	struct work_struct usb_hub_work;
 	enum usb_connect_type connect_type;
 	int connect_type_ready;
 	struct workqueue_struct *usb_wq;

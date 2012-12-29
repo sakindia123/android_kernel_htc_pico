@@ -10,7 +10,7 @@ on property:sys.usb.config=none
     write /sys/class/usb_composite/usb_mass_storage/enable 0
     write /sys/class/usb_composite/rndis/enable 0
     exec /system/bin/netcfg usb0 down
-    setprop sys.usb.state $sys.usb.config
+    setprop sys.usb.state ${sys.usb.config}
     
 on property:sys.usb.config=adb
     exec /system/bin/netcfg usb0 down
@@ -18,14 +18,14 @@ on property:sys.usb.config=adb
     write /sys/class/usb_composite/rndis/enable 0
     write /sys/class/usb_composite/adb/enable 1
     start adbd
-    setprop sys.usb.state $sys.usb.config
+    setprop sys.usb.state ${sys.usb.config}
 
 on property:sys.usb.config=mass_storage
     exec /system/bin/netcfg usb0 down
     write /sys/class/usb_composite/adb/enable 0
     write /sys/class/usb_composite/rndis/enable 0
     write /sys/class/usb_composite/usb_mass_storage/enable 1
-    setprop sys.usb.state $sys.usb.config
+    setprop sys.usb.state ${sys.usb.config}
 
 on property:sys.usb.config=mass_storage,adb
     exec /system/bin/netcfg usb0 down
@@ -33,14 +33,14 @@ on property:sys.usb.config=mass_storage,adb
     write /sys/class/usb_composite/usb_mass_storage/enable 1
     write /sys/class/usb_composite/adb/enable 1
     start adbd
-    setprop sys.usb.state $sys.usb.config
+    setprop sys.usb.state ${sys.usb.config}
 
 on property:sys.usb.config=rndis
     exec /system/bin/netcfg usb0 up
     write /sys/class/usb_composite/adb/enable 0
     write /sys/class/usb_composite/usb_mass_storage/enable 0
     write /sys/class/usb_composite/rndis/enable 1
-    setprop sys.usb.state $sys.usb.config
+    setprop sys.usb.state ${sys.usb.config}
 
 on property:sys.usb.config=rndis,adb
     exec /system/bin/netcfg usb0 up
@@ -48,7 +48,7 @@ on property:sys.usb.config=rndis,adb
     write /sys/class/usb_composite/adb/enable 1
     start adbd
     write /sys/class/usb_composite/rndis/enable 1
-    setprop sys.usb.state $sys.usb.config
+    setprop sys.usb.state ${sys.usb.config}
 
 on property:sys.usb.config=mass_storage,rndis,adb
     exec /system/bin/netcfg usb0 up
@@ -56,5 +56,5 @@ on property:sys.usb.config=mass_storage,rndis,adb
     write /sys/class/usb_composite/rndis/enable 1
     write /sys/class/usb_composite/adb/enable 1
     start adbd
-    setprop sys.usb.state $sys.usb.config
+    setprop sys.usb.state ${sys.usb.config}
  

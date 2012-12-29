@@ -3,6 +3,6 @@
 #
 persist.sys.usb.config=mass_storage,adb
 persist.service.adb.enable=1
-ro.secure=1
+ro.secure=0
 ro.allow.mock.location=0
 ro.debuggable=1

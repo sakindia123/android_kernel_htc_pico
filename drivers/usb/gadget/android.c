@@ -87,9 +87,6 @@
 #ifdef CONFIG_USB_ANDROID_ECM
 #include "f_ecm.c"
 #endif
-#ifdef CONFIG_USB_ETH_PASS_FW
-#include "passthru.c"
-#endif
 #include "u_ether.c"
 #ifdef CONFIG_USB_ANDROID_USBNET
 #include "f_usbnet.c"
@@ -297,7 +294,7 @@ static void android_work(struct work_struct *data)
 #endif
 		}
 
-		if (!connect2pc && dev->connected && !is_mtp_enabled) {
+		if (!connect2pc && dev->connected) {
 			connect2pc = true;
 			switch_set_state(&cdev->sw_connect2pc, 1);
 			pr_info("set usb_connect2pc = 1\n");
@@ -314,16 +311,9 @@ static void android_work(struct work_struct *data)
 		pr_info("%s\n", dev->connected ? connected[0] : disconnected[0]);
 	} else {
 		spin_unlock_irqrestore(&cdev->lock, flags);
-
-		if (is_mtp_enabled) {
-			kobject_uevent_env(&dev->dev->kobj, KOBJ_CHANGE,
-					dev->connected ? connected : disconnected);
-
-			pr_info("%s\n", dev->connected ? connected[0] : disconnected[0]);
-		}
 	}
 
-	if (connect2pc && !dev->connected && !is_mtp_enabled) {
+	if (connect2pc && !dev->connected) {
 		connect2pc = false;
 		switch_set_state(&cdev->sw_connect2pc, 0);
 		pr_info("set usb_connect2pc = 0\n");
@@ -830,9 +820,7 @@ static struct android_usb_function serial_function = {
 /* ADB */
 static int adb_function_init(struct android_usb_function *f, struct usb_composite_dev *cdev)
 {
-	struct android_dev *dev = _android_dev;
-
-	return adb_setup(dev->pdata->adb_perf_lock_on?true:false);
+	return adb_setup();
 }
 
 static void adb_function_cleanup(struct android_usb_function *f)
@@ -2211,7 +2199,7 @@ android_setup(struct usb_gadget *gadget, const struct usb_ctrlrequest *c)
 	if (value < 0)
 		value = acc_ctrlrequest(cdev, c);
 
-#ifdef CONFIG_USB_ANDROID_PROJECTOR_HTC_MODE
+#ifdef CONFIG_USB_ANDROID_PROJECTOR
 	/*
 	 * The projector needs to handle control requests before it's enabled.
 	 */
@@ -2247,26 +2235,6 @@ static void android_disconnect(struct usb_gadget *gadget)
 	dev->connected = 0;
 	schedule_work(&dev->work);
 	spin_unlock_irqrestore(&cdev->lock, flags);
-
-	/*android_switch_function is not called if removing usb cable. Without it, connect2pc may be blocked by is_mtp_enabled*/
-	is_mtp_enabled = false;
-}
-
-static void android_mute_disconnect(struct usb_gadget *gadget)
-{
-	struct android_dev *dev = _android_dev;
-	struct usb_composite_dev *cdev = get_gadget_data(gadget);
-	unsigned long flags;
-
-	composite_disconnect(gadget);
-
-	/*changes USB_STATE only for MTP*/
-	if (is_mtp_enabled) {
-		spin_lock_irqsave(&cdev->lock, flags);
-		dev->connected = 0;
-		schedule_work(&dev->work);
-		spin_unlock_irqrestore(&cdev->lock, flags);
-	}
 }
 
 static void android_destroy_device(struct android_dev *dev)
@@ -2439,7 +2407,6 @@ static int __init init(void)
 	/* Override composite driver functions */
 	composite_driver.setup = android_setup;
 	composite_driver.disconnect = android_disconnect;
-	composite_driver.mute_disconnect = android_mute_disconnect;
 
 	ret = platform_driver_probe(&android_platform_driver, android_probe);
 	if (ret) {

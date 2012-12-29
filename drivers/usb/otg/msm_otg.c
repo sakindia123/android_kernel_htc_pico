@@ -57,45 +57,6 @@ enum {
 };
 
 static DEFINE_MUTEX(notify_sem);
-static DEFINE_MUTEX(smwork_sem);
-static void msm_otg_start_peripheral(struct otg_transceiver *otg, int on);
-static int carkit_phy_reset(struct otg_transceiver *otg);
-
-int htc_get_accessory_state(void)
-{
-	unsigned n;
-	int ret;
-	struct msm_otg *motg = the_msm_otg;
-
-	pm_runtime_get_sync(motg->otg.dev);
-	ret = carkit_phy_reset(&motg->otg);
-	if (ret) {
-		USBH_INFO("carkit_phy_reset failed ret %d\n",ret);
-		return -1;
-	}
-
-	clk_enable(motg->clk);
-	n = readl(USB_OTGSC);
-	/* ID pull-up register */
-	writel(n | OTGSC_IDPU, USB_OTGSC);
-
-	msleep(100);
-	n = readl(USB_OTGSC);
-	USBH_INFO("=============htc_get_accessory_state otgsc = 0x%x\n",n);
-
-	if (n & OTGSC_ID)
-		ret =1;
-	else
-		ret = 0;
-
-	writel(n & ~OTGSC_IDPU, USB_OTGSC);
-	clk_disable(motg->clk);
-
-	pm_runtime_put_noidle(motg->otg.dev);
-	pm_runtime_put_sync_suspend(motg->otg.dev);
-	return ret;
-}
-
 static void send_usb_connect_notify(struct work_struct *w)
 {
 	static struct t_usb_status_notifier *notifier;
@@ -136,7 +97,6 @@ int usb_register_notifier(struct t_usb_status_notifier *notifier)
 	mutex_unlock(&notify_sem);
 	return 0;
 }
-
 
 int usb_is_connect_type_ready(void)
 {
@@ -428,68 +388,6 @@ static int msm_hsusb_ldo_enable(struct msm_otg *motg, int on)
 
 	USBH_DEBUG("reg (%s)\n", on ? "HPM" : "LPM");
 	return ret < 0 ? ret : 0;
-}
-
-static void do_usb_hub_disable(struct work_struct *w)
-{
-	struct msm_otg *motg = container_of(w, struct msm_otg, usb_hub_work);
-
-	if (motg->pdata->usb_hub_enable)
-		motg->pdata->usb_hub_enable(false);
-}
-
-#define DELAY_FOR_CHECK_CHG msecs_to_jiffies(300)
-
-static void charger_detect_by_uart(void)
-{
-	struct msm_otg *motg = the_msm_otg;
-	struct otg_transceiver *otg = &motg->otg;
-	int is_china_ac;
-
-	if (!htc_otg_vbus)
-		return;
-
-	/*UART*/
-	if (motg->pdata->usb_uart_switch)
-		motg->pdata->usb_uart_switch(1);
-
-	is_china_ac = motg->pdata->china_ac_detect();
-
-	if (is_china_ac) {
-		USB_INFO("AC charger\n");
-
-		motg->chg_type = USB_DCP_CHARGER;
-		motg->chg_state = USB_CHG_STATE_DETECTED;
-		motg->connect_type = CONNECT_TYPE_AC;
-		motg->ac_detect_count = 0;
-
-		msm_otg_start_peripheral(otg, 0);
-		otg->state = OTG_STATE_B_IDLE;
-
-		schedule_work(&motg->sm_work);
-		queue_work(motg->usb_wq, &motg->notifier_work);
-	} else {
-		USB_INFO("not AC charger\n");
-
-		/*set uart to gpo*/
-		if (motg->pdata->serial_debug_gpios)
-			motg->pdata->serial_debug_gpios(0);
-		/*turn on USB HUB*/
-		if (motg->pdata->usb_hub_enable)
-			motg->pdata->usb_hub_enable(1);
-
-		/*USB*/
-		if (motg->pdata->usb_uart_switch)
-			motg->pdata->usb_uart_switch(0);
-
-		motg->chg_type = USB_SDP_CHARGER;
-		motg->chg_state = USB_CHG_STATE_DETECTED;
-		motg->connect_type = CONNECT_TYPE_UNKNOWN;
-		motg->ac_detect_count = 0;
-
-		schedule_work(&motg->sm_work);
-		queue_work(motg->usb_wq, &motg->notifier_work);
-	}
 }
 
 static const char *state_string(enum usb_otg_state state)
@@ -791,55 +689,6 @@ static int msm_otg_link_reset(struct msm_otg *motg)
 	return 0;
 }
 
-static int carkit_phy_reset(struct otg_transceiver *otg)
-{
-	struct msm_otg *motg = container_of(otg, struct msm_otg, otg);
-	struct msm_otg_platform_data *pdata = motg->pdata;
-	int ret;
-	u32 val = 0;
-	u32 ulpi_val = 0;
-	USBH_INFO("%s\n", __func__);
-
-	clk_enable(motg->clk);
-	if (motg->pdata->phy_reset)
-		ret = motg->pdata->phy_reset();
-	else
-		ret = msm_otg_phy_reset(motg);
-	if (ret) {
-		USBH_ERR("phy_reset failed\n");
-		return ret;
-	}
-
-	ret = msm_otg_link_reset(motg);
-	if (ret) {
-		dev_err(otg->dev, "link reset failed\n");
-		return ret;
-	}
-	msleep(100);
-
-	ulpi_init(motg);
-
-	/* Ensure that RESET operation is completed before turning off clock */
-	mb();
-
-	clk_disable(motg->clk);
-
-	if ((pdata->otg_control == OTG_PHY_CONTROL) || motg->pdata->phy_notify_enabled) {
-		val = readl_relaxed(USB_OTGSC);
-		if (pdata->mode == USB_OTG) {
-			ulpi_val = ULPI_INT_IDGRD | ULPI_INT_SESS_VALID;
-			val |= OTGSC_IDIE | OTGSC_BSVIE;
-		} else if (pdata->mode == USB_PERIPHERAL) {
-			ulpi_val = ULPI_INT_SESS_VALID;
-			val |= OTGSC_BSVIE;
-		}
-		writel_relaxed(val, USB_OTGSC);
-		ulpi_write(otg, ulpi_val, ULPI_USB_INT_EN_RISE);
-		ulpi_write(otg, ulpi_val, ULPI_USB_INT_EN_FALL);
-	}
-	return 0;
-}
-
 static int msm_otg_reset(struct otg_transceiver *otg)
 {
 	struct msm_otg *motg = container_of(otg, struct msm_otg, otg);
@@ -956,9 +805,7 @@ static int msm_otg_suspend(struct msm_otg *motg)
 
 	if (motg->pdata->phy_type == CI_45NM_INTEGRATED_PHY) {
 		ulpi_read(otg, 0x14);
-		if ((pdata->otg_control == OTG_PHY_CONTROL) ||
-			(pdata->otg_control == OTG_PMIC_CONTROL) ||
-			motg->pdata->phy_notify_enabled)
+		if ((pdata->otg_control == OTG_PHY_CONTROL) || motg->pdata->phy_notify_enabled)
 			ulpi_write(otg, 0x01, 0x30);
 		ulpi_write(otg, 0x08, 0x09);
 	}
@@ -1845,11 +1692,6 @@ static void msm_chg_detect_work(struct work_struct *w)
 	USBH_INFO("%s: state:%s\n", __func__,
 		chg_state_string(motg->chg_state));
 
-	if (motg->pdata->china_ac_detect) {
-		charger_detect_by_uart();
-		return;
-	}
-
 	switch (motg->chg_state) {
 	case USB_CHG_STATE_UNDEFINED:
 		msm_chg_block_on(motg);
@@ -2018,7 +1860,6 @@ static void msm_otg_sm_work(struct work_struct *w)
 		state_string(otg->state), (unsigned) motg->inputs);
 
 	pm_runtime_resume(otg->dev);
-	mutex_lock(&smwork_sem);
 	switch (otg->state) {
 	case OTG_STATE_UNDEFINED:
 		dev_dbg(otg->dev, "OTG_STATE_UNDEFINED state\n");
@@ -2102,9 +1943,7 @@ static void msm_otg_sm_work(struct work_struct *w)
 					msm_otg_start_peripheral(otg, 1);
 					otg->state = OTG_STATE_B_PERIPHERAL;
 					motg->ac_detect_count = 0;
-					/*re-detect charger type only for projects who has no usb hub*/
-					if (!motg->pdata->usb_hub_enable)
-						mod_timer(&motg->ac_detect_timer, jiffies + (3 * HZ));
+					mod_timer(&motg->ac_detect_timer, jiffies + (3 * HZ));
 					break;
 				default:
 					break;
@@ -2221,7 +2060,6 @@ static void msm_otg_sm_work(struct work_struct *w)
 	default:
 		break;
 	}
-	mutex_unlock(&smwork_sem);
 }
 
 void msm_hsusb_vbus_notif_register(void (*vbus_notif)(int))
@@ -2399,11 +2237,6 @@ static void usb_host_cable_detect(bool cable_in)
 }
 #endif
 
-int msm_otg_get_vbus_state(void)
-{
-	return htc_otg_vbus;
-}
-
 void msm_otg_set_vbus_state(int online)
 {
 	struct msm_otg *motg = the_msm_otg;
@@ -2429,26 +2262,16 @@ void msm_otg_set_vbus_state(int online)
 		return;
 #endif
 
+	/* for non-cable_detect && software switch project */
+	if (motg->pdata->usb_uart_switch)
+		motg->pdata->usb_uart_switch(!online);
+
 	if (online) {
 		set_bit(B_SESS_VLD, &motg->inputs);
 		/* VBUS interrupt will be triggered while HOST 5V power turn on */
 		/* set_bit(ID, &motg->inputs); */
-		/*USB*/
-		if (motg->pdata->usb_uart_switch)
-			motg->pdata->usb_uart_switch(0);
-	} else {
+	} else
 		clear_bit(B_SESS_VLD, &motg->inputs);
-		/*turn off USB HUB*/
-		if (motg->pdata->usb_hub_enable)
-			queue_work(motg->usb_wq, &motg->usb_hub_work);
-
-		/*UART*/
-		if (motg->pdata->usb_uart_switch)
-			motg->pdata->usb_uart_switch(1);
-		/*configure uart pin to alternate function*/
-		if (motg->pdata->serial_debug_gpios)
-			motg->pdata->serial_debug_gpios(1);
-	}
 
 	/* Hold a wake_lock so that it will not sleep in detection */
 	wake_lock_timeout(&motg->cable_detect_wlock, 3 * HZ);
@@ -2971,8 +2794,6 @@ static int __init msm_otg_probe(struct platform_device *pdev)
 
 	INIT_WORK(&motg->sm_work, msm_otg_sm_work);
 	INIT_WORK(&motg->notifier_work, send_usb_connect_notify);
-	if (motg->pdata->usb_hub_enable)
-		INIT_WORK(&motg->usb_hub_work, do_usb_hub_disable);
 	INIT_DELAYED_WORK(&motg->chg_work, msm_chg_detect_work);
 	setup_timer(&motg->id_timer, msm_otg_id_timer_func,
 				(unsigned long) motg);

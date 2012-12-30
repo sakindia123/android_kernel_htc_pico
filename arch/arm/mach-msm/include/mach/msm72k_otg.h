@@ -1,5 +1,4 @@
-/* Copyright (c) 2009-2012, Code Aurora Forum. All rights reserved.
- *
+/* Copyright (c) 2009-2012, Code Aurora Forum. All rights reserved. *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
  * only version 2 as published by the Free Software Foundation.
@@ -22,6 +21,7 @@
 
 #include <asm/mach-types.h>
 #include <mach/msm_hsusb.h>
+#include <mach/board.h>
 
 #define OTGSC_BSVIE            (1 << 27)
 #define OTGSC_IDIE             (1 << 24)
@@ -123,6 +123,7 @@ struct msm_otg {
 	struct clk		*phy_reset_clk;
 
 	int			irq;
+	int			idgnd_irq;
 	int			vbus_on_irq;
 	int			id_irq;
 	void __iomem		*regs;
@@ -146,6 +147,7 @@ struct msm_otg {
 	struct wake_lock wlock;
 	unsigned long b_last_se0_sess; /* SRP initial condition check */
 	unsigned long inputs;
+	int pmic_id_status;
 	unsigned long tmouts;
 	u8 active_tmout;
 	struct hrtimer timer;
@@ -158,6 +160,14 @@ struct msm_otg {
 	struct timer_list	id_timer;	/* drives id_status polling */
 	unsigned		b_max_power;	/* ACA: max power of accessory*/
 #endif
+	struct mutex udc_lock;	/* prevent race condition with udc & otg */
+	void (*vbus_notification_cb)(int online);
+
+	struct work_struct notifier_work;
+	enum usb_connect_type connect_type;
+	int connect_type_ready;
+	struct timer_list ac_detect_timer;
+	int ac_detect_count;
 };
 
 static inline int can_phy_power_collapse(struct msm_otg *dev)

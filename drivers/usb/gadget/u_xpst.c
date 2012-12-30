@@ -11,9 +11,6 @@
  * GNU General Public License for more details.
  *
  */
-#if defined(CONFIG_MACH_MECHA)
-#include <mach/smsc251x.h>
-#endif
 
 struct diag_context _context;
 static struct usb_diag_ch *legacych;
@@ -370,7 +367,7 @@ static long htc_diag_ioctl(struct file *file, unsigned int cmd, unsigned long ar
 		diag_smd_enable(driver->ch, "diag_ioctl", tmp_value);
 #if defined(CONFIG_MACH_MECHA)
 		/* internal hub*/
-		smsc251x_mdm_port_sw(tmp_value);
+		/*smsc251x_mdm_port_sw(tmp_value);*/
 #endif
 		/* force diag_read to return error when disable diag */
 		if (tmp_value == 0)

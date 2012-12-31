@@ -212,27 +212,28 @@ int msm_add_host(unsigned int host, struct msm_usb_host_platform_data *plat)
 }
 
 struct usb_diag_platform_data usb_diag_pdata = {
-	.ch_name = DIAG_LEGACY,
-	.update_pid_and_serial_num = usb_diag_update_pid_and_serial_num,
+       .ch_name = DIAG_LEGACY,
+       .update_pid_and_serial_num = usb_diag_update_pid_and_serial_num,
 };
 
 struct platform_device usb_diag_device = {
-	.name	= "usb_diag",
-	.id	= -1,
-	.dev	= {
-		.platform_data = &usb_diag_pdata,
-	},
+      .name = "usb_diag",
+      .id = -1,
+      .dev = {
+      .platform_data = &usb_diag_pdata,
+      },
 };
+
 static struct usb_gadget_fserial_platform_data fserial_pdata = {
-	.no_ports	= 2,
+      .no_ports = 2,
 };
 
 struct platform_device usb_gadget_fserial_device = {
-	.name	= "usb_fserial",
-	.id	= -1,
-	.dev	= {
-		.platform_data = &fserial_pdata,
-	},
+      .name = "usb_fserial",
+      .id = -1,
+      .dev = {
+      .platform_data = &fserial_pdata,
+      },
 };
 
 static struct resource msm_dmov_resource[] = {

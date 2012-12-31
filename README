@@ -22,10 +22,11 @@ WORKING
 - Storage (Both sdcard and sd-ext works)
 - Deep Sleep
 - USB 
+- WiFi (Kernel side OK)
+- Bluetooth (Kernel side OK)
 
 NOT WORKING
 ===========
 
-- Bluetooth
 - Hardware Buttons(Volume up and power button)
-- WiFi
+

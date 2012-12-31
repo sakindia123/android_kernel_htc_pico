@@ -1636,7 +1636,7 @@ arch_idle_exit:
 #ifdef CONFIG_MSM_IDLE_STATS
 	t2 = ktime_to_ns(ktime_get());
 	msm_pm_add_stat(exit_stat, t2 - t1);
-	#if defined(CONFIG_MACH_PRIMODS) || defined(CONFIG_MACH_GOLFU)||defined(CONFIG_MACH_PRIMODD)
+	#if defined(CONFIG_MACH_PRIMODS) || defined(CONFIG_MACH_GOLFU)||defined(CONFIG_MACH_PRIMODD) || defined(CONFIG_MACH_PICO)
 	htc_idle_stat_add(sleep_mode, (u32)(t2 - t1)/1000);
 	#endif
 #endif /* CONFIG_MSM_IDLE_STATS */
@@ -2042,7 +2042,7 @@ static int __init msm_pm_init(void)
 	}
 #endif
 
-#ifdef CONFIG_MACH_GOLFU
+#if defined(CONFIG_MACH_GOLFU) || defined(CONFIG_MACH_PICO)
 	if (board_mfg_mode() == 8)
 		disable_hlt();
 	else

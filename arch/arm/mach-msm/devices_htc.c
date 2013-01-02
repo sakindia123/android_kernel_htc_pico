@@ -70,7 +70,53 @@ int __init parse_tag_hwid(const struct tag *tags)
 	return hwid;
 }
 __tagtable(ATAG_HWID, parse_tag_hwid);
+static char *keycap_tag = NULL;
+static int __init board_keycaps_tag(char *get_keypads)
+{
+	if(strlen(get_keypads))
+		keycap_tag = get_keypads;
+	else
+		keycap_tag = NULL;
+	return 1;
+}
+__setup("androidboot.keycaps=", board_keycaps_tag);
 
+void board_get_keycaps_tag(char **ret_data)
+{
+	*ret_data = keycap_tag;
+}
+EXPORT_SYMBOL(board_get_keycaps_tag);
+static char *cid_tag = NULL;
+static int __init board_set_cid_tag(char *get_hboot_cid)
+{
+	if(strlen(get_hboot_cid))
+		cid_tag = get_hboot_cid;
+	else
+		cid_tag = NULL;
+	return 1;
+}
+__setup("androidboot.cid=", board_set_cid_tag);
+void board_get_cid_tag(char **ret_data)
+{
+	*ret_data = cid_tag;
+}
+EXPORT_SYMBOL(board_get_cid_tag);
+static char *carrier_tag = NULL;
+static int __init board_set_carrier_tag(char *get_hboot_carrier)
+{
+	if(strlen(get_hboot_carrier))
+		carrier_tag = get_hboot_carrier;
+	else
+		carrier_tag = NULL;
+	return 1;
+}
+__setup("androidboot.carrier=", board_set_carrier_tag);
+
+void board_get_carrier_tag(char **ret_data)
+{
+	*ret_data = carrier_tag;
+}
+EXPORT_SYMBOL(board_get_carrier_tag);
 #define ATAG_SKUID 0x4d534D73
 int __init parse_tag_skuid(const struct tag *tags)
 {
@@ -265,18 +311,6 @@ int unregister_notifier_by_psensor(struct notifier_block *nb)
 	return blocking_notifier_chain_unregister(&psensor_notifier_list, nb);
 }
 
-#if defined(CONFIG_TOUCH_KEY_FILTER)
-BLOCKING_NOTIFIER_HEAD(touchkey_notifier_list);
-int register_notifier_by_touchkey(struct notifier_block *nb)
-{
-	return blocking_notifier_chain_register(&touchkey_notifier_list, nb);
-}
-
-int unregister_notifier_by_touchkey(struct notifier_block *nb)
-{
-	return blocking_notifier_chain_unregister(&touchkey_notifier_list, nb);
-}
-#endif
 
 #define ATAG_HERO_PANEL_TYPE 0x4d534D74
 int panel_type;
@@ -323,7 +357,7 @@ int __init board_mfg_mode_init(char *s)
 		mfg_mode = 4;
 	else if (!strcmp(s, "offmode_charging"))
 		mfg_mode = 5;
-	else if (!strcmp(s, "mfgkernel:diag58"))
+	else if (!strcmp(s, "mfgkernel:diag58")) // did we really need this mfgs from 5 to 8?
 		mfg_mode = 6;
 	else if (!strcmp(s, "gift_mode"))
 		mfg_mode = 7;

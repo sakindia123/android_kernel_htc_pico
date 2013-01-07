@@ -76,10 +76,14 @@
 #include <linux/leds-pm8029.h>
 #include "board-pico.h"
 
-#ifdef CONFIG_MSM_RESERVE_PMEM
-#define PMEM_KERNEL_EBI1_SIZE  0x3A000
-#define MSM_PMEM_AUDIO_SIZE	0x5B000
+#ifdef CONFIG_PERFLOCK_BOOT_LOCK
+#include <mach/perflock.h>
 #endif
+
+
+#define PMEM_KERNEL_EBI1_SIZE	0x3A000
+#define MSM_PMEM_AUDIO_SIZE	0x5B000
+
 #define BAHAMA_SLAVE_ID_FM_ADDR         0x2A
 #define BAHAMA_SLAVE_ID_QMEMBIST_ADDR   0x7B
 #define FM_GPIO	83
@@ -594,10 +598,6 @@ static struct i2c_board_info i2c_CM3628_devices[] = {
 
 static struct android_pmem_platform_data android_pmem_adsp_pdata = {
 	.name = "pmem_adsp",
-#ifndef CONFIG_MSM_RESERVE_PMEM
-	.start = MSM_PMEM_ADSP_BASE,
-	.size = MSM_PMEM_ADSP_SIZE,
-#endif
 	.allocator_type = PMEM_ALLOCATORTYPE_BITMAP,
 	.cached = 1,
 	.memory_type = MEMTYPE_EBI1,
@@ -609,7 +609,6 @@ static struct platform_device android_pmem_adsp_device = {
 	.dev = { .platform_data = &android_pmem_adsp_pdata },
 };
 
-#ifdef CONFIG_MSM_RESERVE_PMEM
 static unsigned pmem_mdp_size = MSM_PMEM_MDP_SIZE;
 static int __init pmem_mdp_size_setup(char *p)
 {
@@ -627,7 +626,6 @@ static int __init pmem_adsp_size_setup(char *p)
 }
 
 early_param("pmem_adsp_size", pmem_adsp_size_setup);
-#endif
 
 #define SND(desc, num) { .name = #desc, .id = num }
 static struct snd_endpoint snd_endpoints_list[] = {
@@ -674,6 +672,7 @@ static struct platform_device android_pmem_audio_device = {
 	.id = 2,
 	.dev = { .platform_data = &android_pmem_audio_pdata },
 };
+
 
 #define DEC0_FORMAT ((1<<MSM_ADSP_CODEC_MP3)| \
 	(1<<MSM_ADSP_CODEC_AAC)|(1<<MSM_ADSP_CODEC_WMA)| \
@@ -783,10 +782,6 @@ static struct platform_device msm_device_adspdec = {
 
 static struct android_pmem_platform_data android_pmem_pdata = {
 	.name = "pmem",
-#ifndef CONFIG_MSM_RESERVE_PMEM
-	.start = MSM_PMEM_MDP_BASE,
-	.size = MSM_PMEM_MDP_SIZE,
-#endif
 	.allocator_type = PMEM_ALLOCATORTYPE_BITMAP,
 	.cached = 1,
 	.memory_type = MEMTYPE_EBI1,
@@ -802,7 +797,6 @@ static u32 msm_calculate_batt_capacity(u32 current_voltage);
 static struct msm_psy_batt_pdata msm_psy_batt_data = {
 	.voltage_min_design     = 3200,
 	.voltage_max_design     = 4200,
-        .voltage_fail_safe      = 3340,
 	.avail_chg_sources      = AC_CHG | USB_CHG ,
 	.batt_technology        = POWER_SUPPLY_TECHNOLOGY_LION,
 	.calculate_capacity     = &msm_calculate_batt_capacity,
@@ -815,10 +809,10 @@ static u32 msm_calculate_batt_capacity(u32 current_voltage)
 
 	if (current_voltage <= low_voltage)
             return 0;
-        else if (current_voltage >= high_voltage)
+          else if (current_voltage >= high_voltage)
             return 100;
-        else
-            return (current_voltage - low_voltage) * 100
+               else
+                   return (current_voltage - low_voltage) * 100
 			/ (high_voltage - low_voltage);
 }
 
@@ -1218,14 +1212,26 @@ static struct platform_device *pico_devices[] __initdata = {
 	&msm_gsbi0_qup_i2c_device,
 	&msm_gsbi1_qup_i2c_device,
 	&htc_battery_pdev,
+	&android_pmem_audio_device,
+	&msm_device_snd,
 	&android_pmem_device,
 	&android_pmem_adsp_device,
-        &android_pmem_audio_device,
-        &msm_device_snd,
 	&usb_gadget_fserial_device,
 	&msm_device_adspdec,
 	&msm_batt_device,
 	&htc_headset_mgr,
+#ifdef CONFIG_S5K4E1
+	&msm_camera_sensor_s5k4e1,
+#endif
+#ifdef CONFIG_IMX072
+	&msm_camera_sensor_imx072,
+#endif
+#ifdef CONFIG_WEBCAM_OV9726
+	&msm_camera_sensor_ov9726,
+#endif
+#ifdef CONFIG_MT9E013
+	&msm_camera_sensor_mt9e013,
+#endif
 	&msm_kgsl_3d0,
 #ifdef CONFIG_BT
 	//&msm_bt_power_device,
@@ -1241,8 +1247,6 @@ static struct platform_device *pico_devices[] __initdata = {
 	&pm8029_leds,
 };
 
-#ifdef CONFIG_MSM_RESERVE_PMEM
-	
 static unsigned pmem_kernel_ebi1_size = PMEM_KERNEL_EBI1_SIZE;
 static int __init pmem_kernel_ebi1_size_setup(char *p)
 {
@@ -1270,13 +1274,12 @@ static struct memtype_reserve msm7x27a_reserve_table[] __initdata = {
 	},
 };
 
-
 static void __init size_pmem_devices(void)
 {
 #ifdef CONFIG_ANDROID_PMEM
 	android_pmem_adsp_pdata.size = pmem_adsp_size;
 	android_pmem_pdata.size = pmem_mdp_size;
-        android_pmem_audio_pdata.size = pmem_audio_size;
+	android_pmem_audio_pdata.size = pmem_audio_size;
 #endif
 }
 
@@ -1290,8 +1293,8 @@ static void __init reserve_pmem_memory(void)
 #ifdef CONFIG_ANDROID_PMEM
 	reserve_memory_for(&android_pmem_adsp_pdata);
 	reserve_memory_for(&android_pmem_pdata);
-        reserve_memory_for(&android_pmem_audio_pdata);
-        msm7x27a_reserve_table[MEMTYPE_EBI1].size += pmem_kernel_ebi1_size;
+	reserve_memory_for(&android_pmem_audio_pdata);
+	msm7x27a_reserve_table[MEMTYPE_EBI1].size += pmem_kernel_ebi1_size;
 #endif
 }
 
@@ -1317,7 +1320,7 @@ static void __init msm7x27a_reserve(void)
 	reserve_info = &msm7x27a_reserve_info;
 	msm_reserve();
 }
-#endif
+
 
 static void __init msm_device_i2c_init(void)
 {
@@ -1871,8 +1874,8 @@ static void __init pico_init(void)
 	msm7x2x_misc_init();
 
 	printk(KERN_INFO "pico_init() revision = 0x%x\n", system_rev);
-//	printk(KERN_INFO "MSM_PMEM_MDP_BASE=0x%x MSM_PMEM_ADSP_BASE=0x%x MSM_RAM_CONSOLE_BASE=0x%x MSM_FB_BASE=0x%x\n",
-//		MSM_PMEM_MDP_BASE, MSM_PMEM_ADSP_BASE, MSM_RAM_CONSOLE_BASE, MSM_FB_BASE);
+	printk(KERN_INFO "MSM_PMEM_MDP_BASE=0x%x MSM_PMEM_ADSP_BASE=0x%x MSM_RAM_CONSOLE_BASE=0x%x MSM_FB_BASE=0x%x\n",
+		MSM_PMEM_MDP_BASE, MSM_PMEM_ADSP_BASE, MSM_RAM_CONSOLE_BASE, MSM_FB_BASE);
 	/* Must set msm_hw_reset_hook before first proc comm */
 	msm_hw_reset_hook = pico_reset;
 
@@ -1986,9 +1989,7 @@ MACHINE_START(PICO, "pico")
 	.boot_params	= PHYS_OFFSET + 0x100,
 	.fixup = pico_fixup,
 	.map_io		= msm_common_io_init,
-#ifdef CONFIG_MSM_RESERVE_PMEM
 	.reserve	= msm7x27a_reserve,
-#endif
 	.init_irq	= msm_init_irq,
 	.init_machine	= pico_init,
 	.timer		= &msm_timer,

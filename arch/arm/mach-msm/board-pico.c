@@ -58,7 +58,6 @@
 #include <linux/power_supply.h>
 #include <mach/rpc_pmapp.h>
 #include <mach/msm_battery.h>
-#include <linux/smsc911x.h>
 #include "devices.h"
 #include "timer.h"
 #include "devices-msm7x2xa.h"
@@ -741,9 +740,9 @@ static unsigned int dec_concurrency_table[] = {
 	(DEC4_FORMAT),
 
 	/* Concurrency 6 */
-	(DEC0_FORMAT|(1<<MSM_ADSP_MODE_NONTUNNEL)|(1<<MSM_ADSP_OP_DM)),
-        (DEC1_FORMAT|(1<<MSM_ADSP_MODE_TUNNEL)|(1<<MSM_ADSP_OP_DM)),
-	0, 0, 0,
+	(DEC0_FORMAT|(1<<MSM_ADSP_MODE_TUNNEL)|
+            (1<<MSM_ADSP_MODE_NONTUNNEL)|(1<<MSM_ADSP_OP_DM)),
+	 0, 0, 0, 0,
 
 	/* Concurrency 7 */
 	(DEC0_FORMAT|(1<<MSM_ADSP_MODE_NONTUNNEL)|(1<<MSM_ADSP_OP_DM)),

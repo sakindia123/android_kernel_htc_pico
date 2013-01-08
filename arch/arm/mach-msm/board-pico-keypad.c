@@ -30,6 +30,21 @@ static char *keycaps = "--qwerty";
 
 module_param_named(keycaps, keycaps, charp, 0);
 
+static struct gpio_event_direct_entry pico_keypad_nav_map_xb[] = {
+	{
+		.gpio = PICO_POWER_KEY,
+		.code = KEY_POWER,
+	},
+	{
+		.gpio = PICO_GPIO_VOL_DOWN_XB,
+		.code = KEY_VOLUMEDOWN,
+	},
+	{
+		.gpio = PICO_GPIO_VOL_UP,
+		.code = KEY_VOLUMEUP,
+	},
+};
+
 static struct gpio_event_direct_entry pico_keypad_nav_map[] = {
 	{
 		.gpio = PICO_POWER_KEY,
@@ -50,7 +65,7 @@ static void pico_direct_inputs_gpio(void)
 	int res;
 
 	static struct msm_gpio matirx_inputs_gpio_table[] = {
-		{ GPIO_CFG(PICO_POWER_KEY, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_UP,	        GPIO_CFG_4MA),
+		{ GPIO_CFG(PICO_POWER_KEY, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_UP,	GPIO_CFG_4MA),
 							 "power_key"  },
 		{ GPIO_CFG(PICO_GPIO_VOL_DOWN, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_UP,	GPIO_CFG_4MA),
 							 "volumn_down" },
@@ -120,6 +135,11 @@ int __init pico_init_keypad(void)
 	if (platform_device_register(&pico_reset_keys_device))
 		printk(KERN_WARNING "%s: register reset key fail\n", __func__);
 
+	if (system_rev >= 1) {
+		pico_keypad_power_info.keymap = pico_keypad_nav_map_xb;
+		pico_keypad_power_info.keymap_size =
+				ARRAY_SIZE(pico_keypad_nav_map_xb);
+	}
+
 	return platform_device_register(&pico_keypad_device);
 }
-

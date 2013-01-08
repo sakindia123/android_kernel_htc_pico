@@ -31,27 +31,12 @@ int __init pico_wifi_init(void);
 
 #define MSM_LINUX_BASE_OFFSET	0x02C00000
 
-#ifdef CONFIG_MSM_RESERVE_PMEM
 #define MSM_MM_HEAP_SIZE	0x00300000
-#else
-/* MSM_PMEM_MDP_SIZE + MSM_PMEM_ADSP_SIZE + MSM_RAM_CONSOLE_SIZE + MSM_HTC_DEBUG_INFO_SIZE + MSM_FB_SIZE */
-#define MSM_MM_HEAP_SIZE	0x02700000
-#endif
 
 #define MSM_LINUX_BASE          (MSM_MEM_BASE + MSM_LINUX_BASE_OFFSET) /* 2MB alignment */
 #define MSM_LINUX_SIZE          (MSM_MEM_SIZE - MSM_LINUX_BASE_OFFSET - MSM_MM_HEAP_SIZE)
 
-#ifndef CONFIG_MSM_RESERVE_PMEM
-#define MSM_PMEM_MDP_BASE       (MSM_MEM_BASE + MSM_MEM_SIZE - MSM_MM_HEAP_SIZE) /* 0x2CF00000 */
-#define MSM_PMEM_MDP_SIZE       0x01400000
-
-#define MSM_PMEM_ADSP_BASE      (MSM_PMEM_MDP_BASE + MSM_PMEM_MDP_SIZE) /* 0x2ED00000 */
-#define MSM_PMEM_ADSP_SIZE      0x01000000
-
-#define MSM_RAM_CONSOLE_BASE    (MSM_PMEM_ADSP_BASE + MSM_PMEM_ADSP_SIZE) /* MSM_HTC_RAM_CONSOLE_PHYS must be the same */
-#else
 #define MSM_RAM_CONSOLE_BASE    (MSM_MEM_BASE + MSM_MEM_SIZE - MSM_MM_HEAP_SIZE) /* MSM_HTC_RAM_CONSOLE_PHYS must be the same */
-#endif
 
 #define MSM_RAM_CONSOLE_SIZE    MSM_HTC_RAM_CONSOLE_SIZE
 
@@ -102,7 +87,6 @@ int __init pico_wifi_init(void);
 #define PICO_GPIO_AUD_PCM_CLK         (71)
 
 //#define PICO_GPIO_UP_RESET_N          (76)
-//#define PICO_GPIO_FLASHLIGHT          (85)
 #define PICO_GPIO_UART3_RX            (86)
 #define PICO_GPIO_UART3_TX            (87)
 #define PICO_GPIO_VOL_UP              (92)

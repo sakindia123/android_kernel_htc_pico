@@ -208,15 +208,11 @@ static struct msm_i2c_platform_data msm_gsbi1_qup_i2c_pdata = {
 #endif
 };
 
-/*
+
 #ifdef CONFIG_ARCH_MSM7X27A
-#ifdef CONFIG_MSM_RESERVE_PMEM
-#define MSM_PMEM_MDP_SIZE       0x1B00000
+#define MSM_PMEM_MDP_SIZE       0x1DD1000
 #define MSM_PMEM_ADSP_SIZE      0x1200000
 #endif
-#endif
-*/
-
 
 #ifdef CONFIG_USB_EHCI_MSM_72K
 static int  msm_hsusb_vbus_init(int on)
@@ -1857,8 +1853,8 @@ static void __init pico_init(void)
 	msm7x2x_misc_init();
 
 	printk(KERN_INFO "pico_init() revision = 0x%x\n", system_rev);
-	printk(KERN_INFO "MSM_PMEM_MDP_BASE=0x%x MSM_PMEM_ADSP_BASE=0x%x MSM_RAM_CONSOLE_BASE=0x%x MSM_FB_BASE=0x%x\n",
-		MSM_PMEM_MDP_BASE, MSM_PMEM_ADSP_BASE, MSM_RAM_CONSOLE_BASE, MSM_FB_BASE);
+	/* printk(KERN_INFO "MSM_PMEM_MDP_BASE=0x%x MSM_PMEM_ADSP_BASE=0x%x MSM_RAM_CONSOLE_BASE=0x%x MSM_FB_BASE=0x%x\n",
+		MSM_PMEM_MDP_BASE, MSM_PMEM_ADSP_BASE, MSM_RAM_CONSOLE_BASE, MSM_FB_BASE); */
 	/* Must set msm_hw_reset_hook before first proc comm */
 	msm_hw_reset_hook = pico_reset;
 

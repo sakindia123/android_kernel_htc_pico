@@ -697,6 +697,11 @@ config RESET_BY_CABLE_IN
         boolean "DEVICE RESET BY CABLE IN"
         default n
 
+config FSYNC_CONTROL
+       bool "Support for Fsync control"
+       default y
+       help
+         Google it.
 
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"

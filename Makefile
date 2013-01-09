@@ -31,7 +31,7 @@ export LC_COLLATE LC_NUMERIC
 # unavoidable when linking the built-in.o targets which finally
 # turn into vmlinux), we will call a sub make in that other dir, and
 # after that we are sure that everything which is in that other dir
-# is now up to date.
+# is now up to date.	
 #
 # The only cases where we need to modify files which have global
 # effects are thus separated out and done before the recursive
@@ -373,7 +373,9 @@ KBUILD_CPPFLAGS := -D__KERNEL__
 KBUILD_CFLAGS   := -Wno-trigraphs \
 		   -fno-strict-aliasing -fno-common \
 		   -Wno-format-security \
-		   -fno-delete-null-pointer-checks
+		   -fno-delete-null-pointer-checks \
+                   -march=armv7-a \
+                   -mfpu=neon
 KBUILD_AFLAGS_KERNEL :=
 KBUILD_CFLAGS_KERNEL :=
 KBUILD_AFLAGS   := -D__ASSEMBLY__

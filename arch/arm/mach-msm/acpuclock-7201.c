@@ -357,8 +357,8 @@ static struct clkctl_acpu_speed pll0_960_pll1_196_pll2_1200_pll4_1008[] = {
 
 /* 7x25a pll2 at 1200mhz with GSM capable modem */
 static struct clkctl_acpu_speed pll0_960_pll1_245_pll2_1200_pll4_800_25a[] = {
-	{ 1, 19200, ACPU_PLL_TCXO, 0, 0, 2400, 3, 0, 30720 },
-	{ 1, 61440, ACPU_PLL_1, 1, 3,  7680, 3, 1,  61440 },
+	{ 0, 19200, ACPU_PLL_TCXO, 0, 0, 2400, 3, 0, 30720 },
+	{ 0, 61440, ACPU_PLL_1, 1, 3,  7680, 3, 1,  61440 },
 	{ 1, 122880, ACPU_PLL_1, 1, 1,  15360, 3, 2,  61440 },
 	{ 1, 245760, ACPU_PLL_1, 1, 0, 30720, 3, 3,  61440 },
 	{ 0, 300000, ACPU_PLL_2, 2, 3, 37500, 3, 4, 150000 },
@@ -366,6 +366,7 @@ static struct clkctl_acpu_speed pll0_960_pll1_245_pll2_1200_pll4_800_25a[] = {
 	{ 0, 400000, ACPU_PLL_4, 6, 1, 50000, 3, 4, 122880 },
 	{ 1, 480000, ACPU_PLL_0, 4, 1, 60000, 3, 5, 122880 },
 	{ 1, 600000, ACPU_PLL_2, 2, 1, 75000, 3, 6, 200000 },
+//        { 1, 800000, ACPU_PLL_4, 6, 0, 100000, 3, 7, 200000 },
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, {0, 0, 0, 0}, {0, 0, 0, 0} }
 };
 
@@ -1286,7 +1287,7 @@ static int __init acpuclk_7201_init(struct acpuclk_soc_data *soc_data)
 
 struct acpuclk_soc_data acpuclk_7201_soc_data __initdata = {
 	.max_speed_delta_khz = 400000,
-	.max_axi_khz = 160000,
+	.max_axi_khz = 200000,
 	.init = acpuclk_7201_init,
 };
 

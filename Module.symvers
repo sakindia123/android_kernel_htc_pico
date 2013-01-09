@@ -2869,6 +2869,7 @@
 0x00000000	phy_ethtool_sset	vmlinux	EXPORT_SYMBOL
 0x00000000	jbd2_journal_start	vmlinux	EXPORT_SYMBOL
 0x00000000	eventfd_ctx_fdget	vmlinux	EXPORT_SYMBOL_GPL
+0x00000000	fsynccontrol_fsync_enabled	vmlinux	EXPORT_SYMBOL
 0x00000000	vfs_lock_file	vmlinux	EXPORT_SYMBOL_GPL
 0x00000000	bio_uncopy_user	vmlinux	EXPORT_SYMBOL
 0x00000000	make_bad_inode	vmlinux	EXPORT_SYMBOL

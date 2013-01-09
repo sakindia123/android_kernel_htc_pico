@@ -23,7 +23,7 @@ WORKING
 - Storage (Both sdcard and sd-ext works)
 - Deep Sleep
 - USB 
-- WiFi (Kernel side OK)
+- WiFi
 
 NOT WORKING
 ===========

@@ -34,7 +34,6 @@ DECLARE_EVENT_CLASS(writeback_work_class,
 		__field(int, for_kupdate)
 		__field(int, range_cyclic)
 		__field(int, for_background)
-		__field(int, reason)
 	),
 	TP_fast_assign(
 		strncpy(__entry->name, dev_name(bdi->dev), 32);
@@ -44,18 +43,16 @@ DECLARE_EVENT_CLASS(writeback_work_class,
 		__entry->for_kupdate = work->for_kupdate;
 		__entry->range_cyclic = work->range_cyclic;
 		__entry->for_background	= work->for_background;
-		__entry->reason = work->reason;
 	),
 	TP_printk("bdi %s: sb_dev %d:%d nr_pages=%ld sync_mode=%d "
-		  "kupdate=%d range_cyclic=%d background=%d reason=%s",
+		  "kupdate=%d range_cyclic=%d background=%d",
 		  __entry->name,
 		  MAJOR(__entry->sb_dev), MINOR(__entry->sb_dev),
 		  __entry->nr_pages,
 		  __entry->sync_mode,
 		  __entry->for_kupdate,
 		  __entry->range_cyclic,
-		  __entry->for_background,
-		  wb_reason_name[__entry->reason]
+		  __entry->for_background
 	)
 );
 #define DEFINE_WRITEBACK_WORK_EVENT(name) \
@@ -192,7 +189,6 @@ TRACE_EVENT(writeback_queue_io,
 		__field(unsigned long,	older)
 		__field(long,		age)
 		__field(int,		moved)
-		__field(int,		reason)
 	),
 	TP_fast_assign(
 		strncpy(__entry->name, dev_name(wb->bdi->dev), 32);
@@ -200,14 +196,12 @@ TRACE_EVENT(writeback_queue_io,
 		__entry->age	= older_than_this ?
 				  (jiffies - *older_than_this) * 1000 / HZ : -1;
 		__entry->moved	= moved;
-		__entry->reason	= work->reason;
 	),
-	TP_printk("bdi %s: older=%lu age=%ld enqueue=%d reason=%s",
+	TP_printk("bdi %s: older=%lu age=%ld enqueue=%d",
 		__entry->name,
 		__entry->older,	/* older_than_this in jiffies */
 		__entry->age,	/* older_than_this in relative milliseconds */
-		__entry->moved,
-		wb_reason_name[__entry->reason])
+		__entry->moved)
 );
 
 TRACE_EVENT(global_dirty_state,

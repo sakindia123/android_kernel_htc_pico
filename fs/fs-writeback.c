@@ -41,21 +41,9 @@ struct wb_writeback_work {
 	unsigned int for_kupdate:1;
 	unsigned int range_cyclic:1;
 	unsigned int for_background:1;
-	enum wb_reason reason;		/* why was writeback initiated? */
 
 	struct list_head list;		/* pending work list */
 	struct completion *done;	/* set if the caller waits */
-};
-
-const char *wb_reason_name[] = {
-	[WB_REASON_BACKGROUND]		= "background",
-	[WB_REASON_TRY_TO_FREE_PAGES]	= "try_to_free_pages",
-	[WB_REASON_SYNC]		= "sync",
-	[WB_REASON_PERIODIC]		= "periodic",
-	[WB_REASON_LAPTOP_TIMER]	= "laptop_timer",
-	[WB_REASON_FREE_MORE_MEM]	= "free_more_memory",
-	[WB_REASON_FS_FREE_SPACE]	= "fs_free_space",
-	[WB_REASON_FORKER_THREAD]	= "forker_thread"
 };
 
 /*
@@ -127,7 +115,7 @@ static void bdi_queue_work(struct backing_dev_info *bdi,
 
 static void
 __bdi_start_writeback(struct backing_dev_info *bdi, long nr_pages,
-		      bool range_cyclic, enum wb_reason reason)
+		      bool range_cyclic)
 {
 	struct wb_writeback_work *work;
 
@@ -147,7 +135,6 @@ __bdi_start_writeback(struct backing_dev_info *bdi, long nr_pages,
 	work->sync_mode	= WB_SYNC_NONE;
 	work->nr_pages	= nr_pages;
 	work->range_cyclic = range_cyclic;
-	work->reason	= reason;
 
 	bdi_queue_work(bdi, work);
 }
@@ -163,10 +150,9 @@ __bdi_start_writeback(struct backing_dev_info *bdi, long nr_pages,
  *   completion. Caller need not hold sb s_umount semaphore.
  *
  */
-void bdi_start_writeback(struct backing_dev_info *bdi, long nr_pages,
-			enum wb_reason reason)
+void bdi_start_writeback(struct backing_dev_info *bdi, long nr_pages)
 {
-	__bdi_start_writeback(bdi, nr_pages, true, reason);
+	__bdi_start_writeback(bdi, nr_pages, true);
 }
 
 /**
@@ -655,14 +641,12 @@ static long __writeback_inodes_wb(struct bdi_writeback *wb,
 	return wrote;
 }
 
-long writeback_inodes_wb(struct bdi_writeback *wb, long nr_pages,
-				enum wb_reason reason)
+long writeback_inodes_wb(struct bdi_writeback *wb, long nr_pages)
 {
 	struct wb_writeback_work work = {
 		.nr_pages	= nr_pages,
 		.sync_mode	= WB_SYNC_NONE,
 		.range_cyclic	= 1,
-		.reason		= reason,
 	};
 
 	spin_lock(&wb->list_lock);
@@ -834,7 +818,6 @@ static long wb_check_background_flush(struct bdi_writeback *wb)
 			.sync_mode	= WB_SYNC_NONE,
 			.for_background	= 1,
 			.range_cyclic	= 1,
-			.reason		= WB_REASON_BACKGROUND,
 		};
 
 		return wb_writeback(wb, &work);
@@ -868,7 +851,6 @@ static long wb_check_old_data_flush(struct bdi_writeback *wb)
 			.sync_mode	= WB_SYNC_NONE,
 			.for_kupdate	= 1,
 			.range_cyclic	= 1,
-			.reason		= WB_REASON_PERIODIC,
 		};
 
 		return wb_writeback(wb, &work);
@@ -987,7 +969,7 @@ int bdi_writeback_thread(void *data)
  * Start writeback of `nr_pages' pages.  If `nr_pages' is zero, write back
  * the whole world.
  */
-void wakeup_flusher_threads(long nr_pages, enum wb_reason reason)
+void wakeup_flusher_threads(long nr_pages)
 {
 	struct backing_dev_info *bdi;
 
@@ -1000,7 +982,7 @@ void wakeup_flusher_threads(long nr_pages, enum wb_reason reason)
 	list_for_each_entry_rcu(bdi, &bdi_list, bdi_list) {
 		if (!bdi_has_dirty_io(bdi))
 			continue;
-		__bdi_start_writeback(bdi, nr_pages, false, reason);
+		__bdi_start_writeback(bdi, nr_pages, false);
 	}
 	rcu_read_unlock();
 }
@@ -1221,9 +1203,7 @@ static void wait_sb_inodes(struct super_block *sb)
  * on how many (if any) will be written, and this function does not wait
  * for IO completion of submitted IO.
  */
-void writeback_inodes_sb_nr(struct super_block *sb,
-			    unsigned long nr,
-			    enum wb_reason reason)
+void writeback_inodes_sb_nr(struct super_block *sb, unsigned long nr)
 {
 	DECLARE_COMPLETION_ONSTACK(done);
 	struct wb_writeback_work work = {
@@ -1232,7 +1212,6 @@ void writeback_inodes_sb_nr(struct super_block *sb,
 		.tagged_writepages	= 1,
 		.done			= &done,
 		.nr_pages		= nr,
-		.reason			= reason,
 	};
 
 	WARN_ON(!rwsem_is_locked(&sb->s_umount));
@@ -1249,9 +1228,9 @@ EXPORT_SYMBOL(writeback_inodes_sb_nr);
  * on how many (if any) will be written, and this function does not wait
  * for IO completion of submitted IO.
  */
-void writeback_inodes_sb(struct super_block *sb, enum wb_reason reason)
+void writeback_inodes_sb(struct super_block *sb)
 {
-	return writeback_inodes_sb_nr(sb, get_nr_dirty_pages(), reason);
+	return writeback_inodes_sb_nr(sb, get_nr_dirty_pages());
 }
 EXPORT_SYMBOL(writeback_inodes_sb);
 
@@ -1262,11 +1241,11 @@ EXPORT_SYMBOL(writeback_inodes_sb);
  * Invoke writeback_inodes_sb if no writeback is currently underway.
  * Returns 1 if writeback was started, 0 if not.
  */
-int writeback_inodes_sb_if_idle(struct super_block *sb, enum wb_reason reason)
+int writeback_inodes_sb_if_idle(struct super_block *sb)
 {
 	if (!writeback_in_progress(sb->s_bdi)) {
 		down_read(&sb->s_umount);
-		writeback_inodes_sb(sb, reason);
+		writeback_inodes_sb(sb);
 		up_read(&sb->s_umount);
 		return 1;
 	} else
@@ -1283,12 +1262,11 @@ EXPORT_SYMBOL(writeback_inodes_sb_if_idle);
  * Returns 1 if writeback was started, 0 if not.
  */
 int writeback_inodes_sb_nr_if_idle(struct super_block *sb,
-				   unsigned long nr,
-				   enum wb_reason reason)
+				   unsigned long nr)
 {
 	if (!writeback_in_progress(sb->s_bdi)) {
 		down_read(&sb->s_umount);
-		writeback_inodes_sb_nr(sb, nr, reason);
+		writeback_inodes_sb_nr(sb, nr);
 		up_read(&sb->s_umount);
 		return 1;
 	} else
@@ -1312,7 +1290,6 @@ void sync_inodes_sb(struct super_block *sb)
 		.nr_pages	= LONG_MAX,
 		.range_cyclic	= 0,
 		.done		= &done,
-		.reason		= WB_REASON_SYNC,
 	};
 
 	WARN_ON(!rwsem_is_locked(&sb->s_umount));

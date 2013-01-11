@@ -295,9 +295,8 @@ kgsl_gem_alloc_memory(struct drm_gem_object *obj)
 		priv->memdesc.size = obj->size * priv->bufcount;
 
 	} else if (TYPE_IS_MEM(priv->type)) {
-		result = kgsl_sharedmem_page_alloc(&priv->memdesc,
-					priv->pagetable,
-					obj->size * priv->bufcount, 0);
+		priv->memdesc.hostptr =
+			vmalloc_user(obj->size * priv->bufcount);
 
 		if (priv->memdesc.hostptr == NULL) {
 			DRM_ERROR("Unable to allocate vmalloc memory\n");

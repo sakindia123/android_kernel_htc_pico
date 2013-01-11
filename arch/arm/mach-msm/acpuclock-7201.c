@@ -366,7 +366,6 @@ static struct clkctl_acpu_speed pll0_960_pll1_245_pll2_1200_pll4_800_25a[] = {
 	{ 0, 400000, ACPU_PLL_4, 6, 1, 50000, 3, 4, 122880 },
 	{ 1, 480000, ACPU_PLL_0, 4, 1, 60000, 3, 5, 122880 },
 	{ 1, 600000, ACPU_PLL_2, 2, 1, 75000, 3, 6, 200000 },
-//        { 1, 800000, ACPU_PLL_4, 6, 0, 100000, 3, 7, 200000 },
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, {0, 0, 0, 0}, {0, 0, 0, 0} }
 };
 
@@ -1287,7 +1286,7 @@ static int __init acpuclk_7201_init(struct acpuclk_soc_data *soc_data)
 
 struct acpuclk_soc_data acpuclk_7201_soc_data __initdata = {
 	.max_speed_delta_khz = 400000,
-	.max_axi_khz = 200000,
+	.max_axi_khz = 160000,
 	.init = acpuclk_7201_init,
 };
 

@@ -34,8 +34,8 @@ struct kgsl_iommu {
 static int kgsl_iommu_pt_equal(struct kgsl_pagetable *pt,
 					unsigned int pt_base)
 {
-	struct iommu_domain *domain = pt ? pt->priv : NULL;
-	return domain && pt_base && ((unsigned int)domain == pt_base);
+	struct iommu_domain *domain = pt->priv;
+	return pt && pt_base && ((unsigned int)domain == pt_base);
 }
 
 static void kgsl_iommu_destroy_pagetable(void *mmu_specific_pt)
@@ -129,11 +129,11 @@ static int kgsl_get_iommu_ctxt(struct kgsl_iommu *iommu,
 		container_of(device->parentdev, struct platform_device, dev);
 	struct kgsl_device_platform_data *pdata_dev = pdev->dev.platform_data;
 	if (pdata_dev->iommu_user_ctx_name)
-		iommu->iommu_user_dev = NULL;
-	
+		iommu->iommu_user_dev = msm_iommu_get_ctx(
+					pdata_dev->iommu_user_ctx_name);
 	if (pdata_dev->iommu_priv_ctx_name)
-		iommu->iommu_priv_dev = NULL;
-	
+		iommu->iommu_priv_dev = msm_iommu_get_ctx(
+					pdata_dev->iommu_priv_ctx_name);
 	if (!iommu->iommu_user_dev) {
 		KGSL_CORE_ERR("Failed to get user iommu dev handle for "
 				"device %s\n",
@@ -144,7 +144,8 @@ static int kgsl_get_iommu_ctxt(struct kgsl_iommu *iommu,
 }
 
 static void kgsl_iommu_setstate(struct kgsl_device *device,
-				struct kgsl_pagetable *pagetable)
+				struct kgsl_pagetable *pagetable,
+				unsigned int context_id)
 {
 	struct kgsl_mmu *mmu = &device->mmu;
 

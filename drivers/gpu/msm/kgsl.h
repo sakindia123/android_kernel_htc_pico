@@ -44,10 +44,6 @@
 #define KGSL_PAGETABLE_ENTRIES(_sz) (((_sz) >> PAGE_SHIFT) + \
 				     KGSL_PT_EXTRA_ENTRIES)
 
-#define KGSL_PAGETABLE_SIZE \
-ALIGN(KGSL_PAGETABLE_ENTRIES(CONFIG_MSM_KGSL_PAGE_TABLE_SIZE) * \
-KGSL_PAGETABLE_ENTRY_SIZE, PAGE_SIZE)
-
 #ifdef CONFIG_KGSL_PER_PROCESS_PAGE_TABLE
 #define KGSL_PAGETABLE_COUNT (CONFIG_MSM_KGSL_PAGE_TABLE_COUNT)
 #else
@@ -95,8 +91,6 @@ struct kgsl_driver {
 	struct {
 		unsigned int vmalloc;
 		unsigned int vmalloc_max;
-		unsigned int page_alloc;
-		unsigned int page_alloc_max;
 		unsigned int coherent;
 		unsigned int coherent_max;
 		unsigned int mapped;
@@ -208,14 +202,13 @@ static inline void *kgsl_memdesc_map(struct kgsl_memdesc *memdesc)
 static inline uint8_t *kgsl_gpuaddr_to_vaddr(struct kgsl_memdesc *memdesc,
 					     unsigned int gpuaddr)
 {
-	if (memdesc->gpuaddr == 0 ||
-		gpuaddr < memdesc->gpuaddr ||
-		gpuaddr >= (memdesc->gpuaddr + memdesc->size) ||
-		(NULL == memdesc->hostptr && memdesc->ops->map_kernel_mem &&
-			memdesc->ops->map_kernel_mem(memdesc)))
-			return NULL;
+	void *hostptr = NULL;
 
-	return memdesc->hostptr + (gpuaddr - memdesc->gpuaddr);
+	if ((gpuaddr >= memdesc->gpuaddr) &&
+		(gpuaddr < (memdesc->gpuaddr + memdesc->size)))
+		hostptr = kgsl_memdesc_map(memdesc);
+
+	return hostptr != NULL ? hostptr + (gpuaddr - memdesc->gpuaddr) : NULL;
 }
 
 static inline int timestamp_cmp(unsigned int a, unsigned int b)

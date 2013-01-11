@@ -697,7 +697,7 @@ static struct platform_device msm_lcdc_device = {
 	.name   = "lcdc",
 	.id     = 0,
 };
-#ifdef CONFIG_MSM_KGSL_ADRENO200
+
 static struct resource kgsl_3d0_resources[] = {
 	{
 		.name  = KGSL_3D0_REG_MEMORY,
@@ -731,8 +731,7 @@ static struct kgsl_device_platform_data kgsl_3d0_pdata = {
 	.init_level = 0,
 	.num_levels = 3,
 	.set_grp_async = set_grp_xbar_async,
-	.idle_timeout = HZ,
-	.strtstp_sleepwake = true,
+	.idle_timeout = HZ/5,
 	.nap_allowed = false,
 	.clk_map = KGSL_CLK_CORE | KGSL_CLK_IFACE | KGSL_CLK_MEM,
 };
@@ -757,7 +756,7 @@ void __init msm7x25a_kgsl_3d0_init(void)
 		kgsl_3d0_pdata.pwrlevel[1].bus_freq = 0;
 	}
 }
-#endif
+
 static void __init msm_register_device(struct platform_device *pdev, void *data)
 {
 	int ret;

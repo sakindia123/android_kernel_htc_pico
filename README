@@ -4,7 +4,7 @@ WORKING
 =======
 
 - Touchscreen
-- Sound ( Volume is a bit low)
+- Sound
 - Hardware Acceleration
 - Brightness / Screen controls
 - Accelerometer
@@ -24,10 +24,12 @@ WORKING
 - Deep Sleep
 - USB 
 - WiFi
+- Bluetooth
+- FM Radio
 
 NOT WORKING
 ===========
 
-- Bluetooth
+- Nothing really
 
 

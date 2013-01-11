@@ -329,7 +329,7 @@ static struct clk_lookup msm_clocks_7x27a[] = {
 	CLK_LOOKUP("core_clk",      uart3_clk.c,    "msm_serial.2"),
 	CLK_LOOKUP("core_clk",		uart1dm_clk.c,	"msm_serial_hs.0"),
 	//HTC_CSP_START  Add by evan.xu@2012-02-02
-	CLK_LOOKUP("core_clk",		uart1dm_clk.c,	"msm_serial_hs_ti_dc.0"),
+	CLK_LOOKUP("core_clk",		uart1dm_clk.c,	"msm_serial_hs_brcm.0"),
 	//HTC_CSP_END
 	CLK_LOOKUP("core_clk",		uart2dm_clk.c,	"msm_serial_hs_imc.1"),
 	CLK_LOOKUP("core_clk",		usb_hs_core_clk.c, "msm_otg"),
@@ -427,9 +427,4 @@ static struct clk_lookup msm_clocks_8x50[] = {
 	CLK_LOOKUP("iface_clk",		grp_2d_p_clk.c,	"kgsl-2d0.0"),
 	CLK_LOOKUP("core_clk",		gsbi_clk.c,	"qup_i2c.4"),
 	CLK_LOOKUP("iface_clk",		gsbi_p_clk.c,	"qup_i2c.4"),
-};
-
-struct clock_init_data qds8x50_clock_init_data __initdata = {
-	.table = msm_clocks_8x50,
-	.size = ARRAY_SIZE(msm_clocks_8x50),
 };

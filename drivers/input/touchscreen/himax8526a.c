@@ -573,6 +573,9 @@ static void himax_ts_work_func(struct work_struct *work)
 		/* finger leave */
 		if (!ts->event_htc_enable) {
 			input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, 0);
+			input_report_abs(ts->input_dev, ABS_MT_PRESSURE, 0);
+                      input_report_key(ts->input_dev, BTN_TOUCH, 0);
+        input_mt_sync(ts->input_dev);
 		} else {
 			input_report_abs(ts->input_dev, ABS_MT_AMPLITUDE, 0);
 			input_report_abs(ts->input_dev, ABS_MT_POSITION, 1 << 31);
@@ -602,6 +605,8 @@ static void himax_ts_work_func(struct work_struct *work)
 					input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, w);
 					input_report_abs(ts->input_dev, ABS_MT_POSITION_X, x);
 					input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, y);
+					input_report_abs(ts->input_dev, ABS_MT_PRESSURE, 255);
+                   			input_report_key(ts->input_dev, BTN_TOUCH, 1);
 					input_mt_sync(ts->input_dev);
 				} else {
 					input_report_abs(ts->input_dev, ABS_MT_AMPLITUDE, w << 16 | w);
@@ -617,7 +622,7 @@ static void himax_ts_work_func(struct work_struct *work)
 					ts->pre_finger_data[1] = y;
 				}
 
-				if (ts->debug_log_level & 0x2)
+				//if (ts->debug_log_level & 0x2)
 					printk(KERN_INFO "Finger %d=> X:%d, Y:%d w:%d, z:%d\n",
 						loop_i + 1, x, y, w, w);
 			}
@@ -761,6 +766,10 @@ static int himax8526a_probe(struct i2c_client *client, const struct i2c_device_i
 	set_bit(KEY_HOME, ts->input_dev->keybit);
 	set_bit(KEY_MENU, ts->input_dev->keybit);
 	set_bit(KEY_SEARCH, ts->input_dev->keybit);
+	set_bit(BTN_TOUCH, ts->input_dev->keybit);
+	//set_bit(KEY_APP_SWITCH, ts->input_dev->keybit);
+	set_bit(INPUT_PROP_DIRECT, ts->input_dev->propbit);
+
 
 	printk(KERN_INFO "input_set_abs_params: mix_x %d, max_x %d, min_y %d, max_y %d\n",
 		pdata->abs_x_min, pdata->abs_x_max, pdata->abs_y_min, pdata->abs_y_max);

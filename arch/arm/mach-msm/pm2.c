@@ -192,7 +192,7 @@ static struct kobj_attribute *msm_pm_mode_kobj_attrs[MSM_PM_SLEEP_MODE_NR];
 
 static int in_panic;
 
-//void clks_allow_tcxo_locked_debug(void);
+void clks_allow_tcxo_locked_debug(void);
 
 int check_in_panic(void)
 {
@@ -1083,7 +1083,7 @@ static int msm_pm_power_collapse
 
 	if ((!from_idle && (msm_pm_debug_mask & MSM_PM_DEBUG_CLOCK_VOTE)) ||
 			(from_idle && (msm_pm_debug_mask & MSM_PM_DEBUG_IDLE)))
-		//clks_allow_tcxo_locked_debug();
+		clks_allow_tcxo_locked_debug();
 
 	msm_pm_smem_data->sleep_time = sleep_delay;
 	msm_pm_smem_data->resources_used = sleep_limit;

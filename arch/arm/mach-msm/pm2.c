@@ -1827,7 +1827,7 @@ static uint32_t restart_reason = RESTART_REASON_RAMDUMP;
 
 static void msm_pm_power_off(void)
 {
-	/* msm_rpcrouter_close(); */
+	 msm_rpcrouter_close();
 	msm_proc_comm(PCOM_POWER_DOWN, 0, 0);
 	for (;;)
 		;
@@ -1909,7 +1909,7 @@ static void msm_pm_restart(char str, const char *cmd)
 	dprint_int_ctrl_regs();
 	//if (in_panic)
 	//	smd_ch(2);
-	/* msm_rpcrouter_close(); */
+	 msm_rpcrouter_close(); 
 	if (restart_reason == RESTART_REASON_RIL_FATAL) {
 	//	smd_ch(0);
 		show_state_filter(TASK_UNINTERRUPTIBLE);

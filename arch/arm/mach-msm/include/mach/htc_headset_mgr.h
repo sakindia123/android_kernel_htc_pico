@@ -128,7 +128,8 @@
 #define HS_DELAY_INSERT			500
 #define HS_DELAY_REMOVE_LONG		700
 #define HS_DELAY_REMOVE_SHORT		200
-#define HS_DELAY_BUTTON			500
+#define HS_DELAY_BUTTON			10
+#define HS_DELAY_BUTTON_LONG		50
 #define HS_DELAY_IRQ_INIT		(10 * HS_DELAY_SEC)
 
 #define HS_JIFFIES_ZERO			msecs_to_jiffies(HS_DELAY_ZERO)
@@ -138,6 +139,7 @@
 #define HS_JIFFIES_REMOVE_LONG		msecs_to_jiffies(HS_DELAY_REMOVE_LONG)
 #define HS_JIFFIES_REMOVE_SHORT		msecs_to_jiffies(HS_DELAY_REMOVE_SHORT)
 #define HS_JIFFIES_BUTTON		msecs_to_jiffies(HS_DELAY_BUTTON)
+#define HS_JIFFIES_BUTTON_LONG		msecs_to_jiffies(HS_DELAY_BUTTON_LONG)
 #define HS_JIFFIES_IRQ_INIT		msecs_to_jiffies(HS_DELAY_IRQ_INIT)
 
 #define HS_WAKE_LOCK_TIMEOUT		(2 * HZ)

@@ -1837,12 +1837,12 @@ void pico_add_usb_devices(void)
 	platform_device_register(&android_usb_device);
 }
 
-static int __init board_serialno_setup(char *serialno)
+/*static int __init board_serialno_setup(char *serialno)
 {
 	android_usb_pdata.serial_number = serialno;
 	return 1;
 }
-__setup("androidboot.serialno=", board_serialno_setup);
+__setup("androidboot.serialno=", board_serialno_setup);*/
 
 static void __init pico_init(void)
 {

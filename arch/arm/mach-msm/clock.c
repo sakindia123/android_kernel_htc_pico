@@ -356,6 +356,23 @@ int clk_set_flags(struct clk *clk, unsigned long flags)
 EXPORT_SYMBOL(clk_set_flags);
 
 static struct clock_init_data __initdata *clk_init_data;
+static struct clk_lookup *msm_clocks;
+static unsigned msm_num_clocks;
+void clks_allow_tcxo_locked_debug(void)
+{
+	struct clk *clk;
+	unsigned i, clk_on_count = 0;
+
+	for (i = 0; i < msm_num_clocks; i++) {
+		clk = msm_clocks[i].clk;
+		if (clk && clk->count) {
+			pr_info("%s: '%s' not off.\n", __func__, clk->dbg_name);
+			clk_on_count++;
+		}
+	}
+	pr_info("%s: %d clks are on.\n", __func__, clk_on_count);
+}
+EXPORT_SYMBOL(clks_allow_tcxo_locked_debug);
 
 void __init msm_clock_init(struct clock_init_data *data)
 {

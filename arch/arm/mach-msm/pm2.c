@@ -192,7 +192,7 @@ static struct kobj_attribute *msm_pm_mode_kobj_attrs[MSM_PM_SLEEP_MODE_NR];
 
 static int in_panic;
 
-//void clks_allow_tcxo_locked_debug(void);
+void clks_allow_tcxo_locked_debug(void);
 
 int check_in_panic(void)
 {
@@ -1083,7 +1083,7 @@ static int msm_pm_power_collapse
 
 	if ((!from_idle && (msm_pm_debug_mask & MSM_PM_DEBUG_CLOCK_VOTE)) ||
 			(from_idle && (msm_pm_debug_mask & MSM_PM_DEBUG_IDLE)))
-		//clks_allow_tcxo_locked_debug();
+		clks_allow_tcxo_locked_debug();
 
 	msm_pm_smem_data->sleep_time = sleep_delay;
 	msm_pm_smem_data->resources_used = sleep_limit;
@@ -1827,7 +1827,7 @@ static uint32_t restart_reason = RESTART_REASON_RAMDUMP;
 
 static void msm_pm_power_off(void)
 {
-	/* msm_rpcrouter_close(); */
+	 msm_rpcrouter_close();
 	msm_proc_comm(PCOM_POWER_DOWN, 0, 0);
 	for (;;)
 		;
@@ -1909,7 +1909,7 @@ static void msm_pm_restart(char str, const char *cmd)
 	dprint_int_ctrl_regs();
 	//if (in_panic)
 	//	smd_ch(2);
-	/* msm_rpcrouter_close(); */
+	 msm_rpcrouter_close(); 
 	if (restart_reason == RESTART_REASON_RIL_FATAL) {
 	//	smd_ch(0);
 		show_state_filter(TASK_UNINTERRUPTIBLE);

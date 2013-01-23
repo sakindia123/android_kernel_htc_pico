@@ -103,8 +103,8 @@ config STACKTRACE_SUPPORT
 
 config HAVE_LATENCYTOP_SUPPORT
 	bool
-	depends on !SMP
-	default y
+#	depends on !SMP
+	default n
 
 config LOCKDEP_SUPPORT
 	bool

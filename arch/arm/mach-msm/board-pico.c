@@ -76,7 +76,7 @@
 #include "board-pico.h"
 
 #define PMEM_KERNEL_EBI1_SIZE	0x3A000
-#define MSM_PMEM_AUDIO_SIZE	0x1F4000
+#define MSM_PMEM_AUDIO_SIZE	0x5B000
 
 #define BAHAMA_SLAVE_ID_FM_ADDR         0x2A
 #define BAHAMA_SLAVE_ID_QMEMBIST_ADDR   0x7B
@@ -734,8 +734,7 @@ static unsigned int dec_concurrency_table[] = {
 	(DEC4_FORMAT),
 
 	/* Concurrency 6 */
-	(DEC0_FORMAT|(1<<MSM_ADSP_MODE_TUNNEL)|
-            (1<<MSM_ADSP_MODE_NONTUNNEL)|(1<<MSM_ADSP_OP_DM)),
+	(DEC0_FORMAT|(1<<MSM_ADSP_MODE_NONTUNNEL)|(1<<MSM_ADSP_OP_DM)),
 	 0, 0, 0, 0,
 
 	/* Concurrency 7 */

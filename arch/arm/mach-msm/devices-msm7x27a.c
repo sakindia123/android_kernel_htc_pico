@@ -716,16 +716,16 @@ static struct resource kgsl_3d0_resources[] = {
 static struct kgsl_device_platform_data kgsl_3d0_pdata = {
 	.pwrlevel = {
 		{
+			.gpu_freq = 307200000, 
+                        .bus_freq = 213760000,
+		},
+		{
 			.gpu_freq = 245760000,
 			.bus_freq = 200000000,
 		},
 		{
 			.gpu_freq = 192000000,
-			.bus_freq = 160000000,
-		},
-		{
-			.gpu_freq = 133330000,
-			.bus_freq = 0,
+			.bus_freq = 160000000, 
 		},
 	},
 	.init_level = 0,
@@ -754,8 +754,8 @@ void __init msm7x25a_kgsl_3d0_init(void)
 		kgsl_3d0_pdata.pwrlevel[0].bus_freq = 160000000;
 		kgsl_3d0_pdata.pwrlevel[1].gpu_freq = 96000000;
 		kgsl_3d0_pdata.pwrlevel[1].bus_freq = 0;
-	}
 }
+   }
 
 static void __init msm_register_device(struct platform_device *pdev, void *data)
 {

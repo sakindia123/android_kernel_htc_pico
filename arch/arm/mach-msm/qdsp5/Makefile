@@ -18,5 +18,4 @@ obj-y += audio_out.o audmgr.o audpp.o audpreproc.o
 obj-y += snd.o snd_adie.o
 obj-$(CONFIG_ARCH_MSM7X27A) += audio_fm.o
 obj-$(CONFIG_ARCH_MSM7X27A) += audio_mvs.o
-obj-$(CONFIG_ARCH_MSM7X27A) += audio_lpa.o
 obj-$(CONFIG_ARCH_MSM7X27A) += audio_voicememo.o

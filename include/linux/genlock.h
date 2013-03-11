@@ -1,6 +1,8 @@
 #ifndef _GENLOCK_H_
 #define _GENLOCK_H_
 
+#include <linux/bitops.h>
+
 #ifdef __KERNEL__
 
 struct genlock;
@@ -21,8 +23,8 @@ int genlock_lock(struct genlock_handle *handle, int op, int flags,
 #define GENLOCK_WRLOCK 1
 #define GENLOCK_RDLOCK 2
 
-#define GENLOCK_NOBLOCK       (1 << 0)
-#define GENLOCK_WRITE_TO_READ (1 << 1)
+#define GENLOCK_NOBLOCK       BIT(0)
+#define GENLOCK_WRITE_TO_READ BIT(1)
 
 struct genlock_lock {
 	int fd;

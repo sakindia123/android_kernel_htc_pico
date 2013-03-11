@@ -122,3 +122,11 @@ int iommu_unmap(struct iommu_domain *domain, unsigned long iova, int gfp_order)
 	return iommu_ops->unmap(domain, iova, gfp_order);
 }
 EXPORT_SYMBOL_GPL(iommu_unmap);
+
+phys_addr_t iommu_get_pt_base_addr (struct iommu_domain *domain)
+{
+if (!iommu_found())
+return 0;
+return iommu_ops->get_pt_base_addr(domain);
+}
+EXPORT_SYMBOL_GPL(iommu_get_pt_base_addr);

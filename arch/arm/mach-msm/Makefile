@@ -182,7 +182,7 @@ ifdef CONFIG_PM
 	obj-$(CONFIG_ARCH_MSM7X27A) += pm2.o
 	obj-$(CONFIG_ARCH_MSM7X25) += pm.o
 	obj-$(CONFIG_ARCH_MSM7X01A) += pm.o
-#	obj-y += pm-boot.o
+	obj-y += pm-boot.o
 else
 	obj-y += no-pm.o hotplug.o
 endif
@@ -250,10 +250,10 @@ obj-$(CONFIG_MACH_MSM7X27_SURF) += board-msm7x27.o devices-msm7x27.o
 obj-$(CONFIG_MACH_MSM7X27_FFA) += board-msm7x27.o devices-msm7x27.o
 obj-$(CONFIG_ARCH_MSM7X27A) += clock-pcom-lookup.o devices-msm7x27a.o htc_awb_cal.o
 obj-$(CONFIG_MACH_PICO) += board-pico.o devices-msm7x27a.o devices_htc.o board-pico-wifi.o htc_wifi_nvs.o
-obj-$(CONFIG_MACH_PICO) += board-pico-panel.o
+obj-$(CONFIG_MACH_PICO) += display/board-pico-panel.o
 obj-$(CONFIG_MACH_PICO) += board-pico-keypad.o
-obj-$(CONFIG_MACH_PICO) += htc_bdaddress.o htc_sleep_clk.o board-pico-rfkill.o
-obj-$(CONFIG_MACH_PICO) += board-pico-mmc.o
+obj-$(CONFIG_MACH_PICO) += htc_bdaddress.o board-pico-rfkill.o
+obj-$(CONFIG_MACH_PICO) += board-pico-mmc.o htc_sleep_clk.o
 obj-$(CONFIG_MACH_PICO) += htc_awb_cal.o htc_util_7x2x.o
 obj-$(CONFIG_MACH_GOLFU) += board-golfu.o devices-msm7x27a.o devices_htc.o  emmc_partitions.o
 obj-$(CONFIG_MACH_GOLFU) += display/board-golfu-panel.o

@@ -75,11 +75,8 @@ static const struct pll {
 struct clock_state {
 	struct clkctl_acpu_speed	*current_speed;
 	struct mutex			lock;
-	uint32_t			acpu_switch_time_us;
 	uint32_t			max_speed_delta_khz;
-	uint32_t			vdd_switch_time_us;
 	unsigned long			max_axi_khz;
-	unsigned long			wait_for_irq_khz;
 	struct clk			*ebi1_clk;
 };
 
@@ -121,6 +118,9 @@ static remote_spinlock_t pll_lock;
 static struct shared_pll_control *pll_control;
 static struct clock_state drv_state = { 0 };
 static struct clkctl_acpu_speed *acpu_freq_tbl;
+#ifdef CONFIG_MACH_PRIMODD
+unsigned int vdd_pa=10;
+#endif
 /*
  * ACPU freq tables used for different PLLs frequency combinations. The
  * correct table is selected during init.
@@ -301,6 +301,18 @@ static struct clkctl_acpu_speed pll0_960_pll1_196_pll2_1200_pll4_800[] = {
 
 /* 7x27aa pll4 at 1008mhz with GSM capable modem */
 static struct clkctl_acpu_speed pll0_960_pll1_245_pll2_1200_pll4_1008[] = {
+#ifdef CONFIG_MACH_PRIMODD
+	{ 0, 19200, ACPU_PLL_TCXO, 0, 0, 2400, 3, 0, 30720 },
+	{ 0, 61440, ACPU_PLL_1, 1, 3,  7680, 3, 1, 61440 },
+	{ 1, 122880, ACPU_PLL_1, 1, 1,  15360, 3, 2, 61440 },
+	{ 1, 245760, ACPU_PLL_1, 1, 0, 30720, 3, 3, 122880 },
+	{ 0, 300000, ACPU_PLL_2, 2, 3, 37500, 3, 4, 150000 },
+	{ 1, 320000, ACPU_PLL_0, 4, 2, 40000, 3, 4, 160000 },
+	{ 1, 480000, ACPU_PLL_0, 4, 1, 60000, 3, 5, 160000 },
+	{ 0, 504000, ACPU_PLL_4, 6, 1, 63000, 3, 6, 200000 },
+	{ 1, 600000, ACPU_PLL_2, 2, 1, 75000, 3, 6, 200000 },
+	{ 1, 1008000, ACPU_PLL_4, 6, 0, 126000, 3, 7, 200000},
+#else
 	{ 0, 19200, ACPU_PLL_TCXO, 0, 0, 2400, 3, 0, 30720 },
 	{ 0, 61440, ACPU_PLL_1, 1, 3,  7680, 3, 1, 61440 },
 	{ 1, 122880, ACPU_PLL_1, 1, 1,  15360, 3, 2, 61440 },
@@ -311,11 +323,24 @@ static struct clkctl_acpu_speed pll0_960_pll1_245_pll2_1200_pll4_1008[] = {
 	{ 0, 504000, ACPU_PLL_4, 6, 1, 63000, 3, 6, 200000 },
 	{ 1, 600000, ACPU_PLL_2, 2, 1, 75000, 3, 6, 200000 },
 	{ 1, 1008000, ACPU_PLL_4, 6, 0, 126000, 3, 7, 200000},
+#endif
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, {0, 0, 0, 0}, {0, 0, 0, 0} }
 };
 
 /* 7x27aa pll4 at 1008mhz with CDMA capable modem */
 static struct clkctl_acpu_speed pll0_960_pll1_196_pll2_1200_pll4_1008[] = {
+#ifdef CONFIG_MACH_PRIMODD
+	{ 0, 19200, ACPU_PLL_TCXO, 0, 0, 2400, 3, 0, 24567 },
+	{ 0, 65536, ACPU_PLL_1, 1, 2,  8192, 3, 1, 49152 },
+	{ 1, 98304, ACPU_PLL_1, 1, 1,  12288, 3, 2, 49152 },
+	{ 1, 196608, ACPU_PLL_1, 1, 0, 24576, 3, 3, 98304 },
+	{ 0, 300000, ACPU_PLL_2, 2, 3, 37500, 3, 4, 150000 },
+	{ 1, 320000, ACPU_PLL_0, 4, 2, 40000, 3, 4, 160000 },
+	{ 1, 480000, ACPU_PLL_0, 4, 1, 60000, 3, 5, 160000 },
+	{ 0, 504000, ACPU_PLL_4, 6, 1, 63000, 3, 6, 200000 },
+	{ 1, 600000, ACPU_PLL_2, 2, 1, 75000, 3, 6, 200000 },
+	{ 1, 1008000, ACPU_PLL_4, 6, 0, 126000, 3, 7, 200000},
+#else
 	{ 0, 19200, ACPU_PLL_TCXO, 0, 0, 2400, 3, 0, 24576 },
 	{ 0, 65536, ACPU_PLL_1, 1, 3,  8192, 3, 1, 49152 },
 	{ 1, 98304, ACPU_PLL_1, 1, 1,  12288, 3, 2, 49152 },
@@ -326,11 +351,12 @@ static struct clkctl_acpu_speed pll0_960_pll1_196_pll2_1200_pll4_1008[] = {
 	{ 0, 504000, ACPU_PLL_4, 6, 1, 63000, 3, 6, 200000 },
 	{ 1, 600000, ACPU_PLL_2, 2, 1, 75000, 3, 6, 200000 },
 	{ 1, 1008000, ACPU_PLL_4, 6, 0, 126000, 3, 7, 200000},
+#endif
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, {0, 0, 0, 0}, {0, 0, 0, 0} }
 };
 
-/* 7x25a pll2 at 1200mhz with GSM capable modem */ //pico
-static struct clkctl_acpu_speed pll0_960_pll1_245_pll2_1200_25a[] = {
+/* 7x25a pll2 at 1200mhz with GSM capable modem */
+static struct clkctl_acpu_speed pll0_960_pll1_245_pll2_1200_pll4_800_25a[] = {
 	{ 0, 19200, ACPU_PLL_TCXO, 0, 0, 2400, 3, 0, 30720 },
 	{ 0, 61440, ACPU_PLL_1, 1, 3,  7680, 3, 1,  61440 },
 	{ 1, 122880, ACPU_PLL_1, 1, 1,  15360, 3, 2,  61440 },
@@ -340,8 +366,6 @@ static struct clkctl_acpu_speed pll0_960_pll1_245_pll2_1200_25a[] = {
 	{ 0, 400000, ACPU_PLL_4, 6, 1, 50000, 3, 4, 122880 },
 	{ 1, 480000, ACPU_PLL_0, 4, 1, 60000, 3, 5, 122880 },
 	{ 1, 600000, ACPU_PLL_2, 2, 1, 75000, 3, 6, 200000 },
-	{ 1, 737000, ACPU_PLL_2, 2, 1, 85000, 3, 6, 200000 },
-	{ 1, 800000, ACPU_PLL_2, 2, 1, 100000, 3, 7, 200000 },
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, {0, 0, 0, 0}, {0, 0, 0, 0} }
 };
 
@@ -392,6 +416,17 @@ static struct clkctl_acpu_speed pll0_960_pll1_737_pll2_1200_pll4_1008[] = {
 
 /* 7x27aa pll4 at 1008mhz with CDMA capable modem */
 static struct clkctl_acpu_speed pll0_960_pll1_589_pll2_1200_pll4_1008[] = {
+#ifdef CONFIG_MACH_PRIMODD
+	{ 1, 19200, ACPU_PLL_TCXO, 0, 0, 2400, 3, 0, 30720 },
+	{ 1, 61440, ACPU_PLL_1, 1, 3,  7680, 3, 1, 61440 },
+	{ 1, 122880, ACPU_PLL_1, 1, 1,  15360, 3, 2, 61440 },
+	{ 1, 245760, ACPU_PLL_1, 1, 0, 30720, 3, 3, 98304 },
+	{ 1, 320000, ACPU_PLL_0, 4, 2, 40000, 3, 4, 160000 },
+	{ 1, 480000, ACPU_PLL_0, 4, 1, 60000, 3, 5, 160000 },
+	{ 1, 504000, ACPU_PLL_4, 6, 1, 63000, 3, 6, 200000 },
+	{ 1, 600000, ACPU_PLL_2, 2, 1, 75000, 3, 6, 200000 },
+	{ 1, 1008000, ACPU_PLL_4, 6, 0, 126000, 3, 7, 200000},
+#else
 	{ 0, 19200, ACPU_PLL_TCXO, 0, 0, 2400, 3, 0, 24576 },
 	{ 0, 65536, ACPU_PLL_1, 1, 8,  8192, 3, 1, 49152 },
 	{ 1, 98304, ACPU_PLL_1, 1, 5,  12288, 3, 2, 49152 },
@@ -402,11 +437,12 @@ static struct clkctl_acpu_speed pll0_960_pll1_589_pll2_1200_pll4_1008[] = {
 	{ 0, 504000, ACPU_PLL_4, 6, 1, 63000, 3, 6, 200000 },
 	{ 1, 600000, ACPU_PLL_2, 2, 1, 75000, 3, 6, 200000 },
 	{ 1, 1008000, ACPU_PLL_4, 6, 0, 126000, 3, 7, 200000},
+#endif
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, {0, 0, 0, 0}, {0, 0, 0, 0} }
 };
 
 /* 7x25a pll2 at 1200mhz with GSM capable modem */
-static struct clkctl_acpu_speed pll0_960_pll1_737_pll2_1200_25a[] = {
+static struct clkctl_acpu_speed pll0_960_pll1_737_pll2_1200_pll4_800_25a[] = {
 	{ 0, 19200, ACPU_PLL_TCXO, 0, 0, 2400, 3, 0, 30720 },
 	{ 0, 61440, ACPU_PLL_1, 1, 11,  7680, 3, 1,  61440 },
 	{ 1, 122880, ACPU_PLL_1, 1, 5,  15360, 3, 2,  61440 },
@@ -416,8 +452,6 @@ static struct clkctl_acpu_speed pll0_960_pll1_737_pll2_1200_25a[] = {
 	{ 0, 400000, ACPU_PLL_4, 6, 1, 50000, 3, 4, 122880 },
 	{ 1, 480000, ACPU_PLL_0, 4, 1, 60000, 3, 5, 122880 },
 	{ 1, 600000, ACPU_PLL_2, 2, 1, 75000, 3, 6, 200000 },
-	{ 1, 722000, ACPU_PLL_2, 2, 1, 85000, 3, 6, 200000 },
-	{ 1, 800000, ACPU_PLL_2, 2, 1, 100000, 3, 7, 200000 },
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, {0, 0, 0, 0}, {0, 0, 0, 0} }
 };
 
@@ -433,9 +467,6 @@ static struct clkctl_acpu_speed pll0_960_pll1_737_pll2_1200_25a[] = {
 #define PLL_1008_MHZ	52
 #define PLL_1056_MHZ	55
 #define PLL_1200_MHZ	62
-#define PLL_OVERCLOCK1_MHZ    66
-#define PLL_OVERCLOCK2_MHZ    68//is it safe? yes it safe
-//#define PLL_OVERCLOCK3_MHZ    69 // is if safe? not tested :(
 
 #define PLL_CONFIG(m0, m1, m2, m4) { \
 	PLL_##m0##_MHZ, PLL_##m1##_MHZ, PLL_##m2##_MHZ, PLL_##m4##_MHZ, \
@@ -549,7 +580,7 @@ static int pc_pll_request(unsigned id, unsigned on)
 				pll_control->pll[PLL_BASE + id].on = 0;
 			}
 		}
-		//wmb();
+		wmb();
 		remote_spin_unlock_irqrestore(&pll_lock, flags);
 	} else {
 		res = msm_proc_comm(PCOM_CLKCTL_RPC_PLL_REQUEST, &id, &on);
@@ -614,15 +645,6 @@ static void acpuclk_set_div(const struct clkctl_acpu_speed *hunt_s)
 	/* CLK_SEL_SRC1NO */
 	src_sel = reg_clksel & 1;
 
-if(hunt_s->a11clk_khz==737000) {
-                writel(PLL_OVERCLOCK1_MHZ, PLLn_L_VAL(2)); /* This is where real over clock happens. Here we change the speed of PLL2 with new multiplier. */
-                udelay(50);
-       }
-if(hunt_s->a11clk_khz==800000) {
-                writel(PLL_OVERCLOCK2_MHZ, PLLn_L_VAL(2)); /* This is where real over clock happens. Here we change the speed of PLL2 with new multiplier. */
-                udelay(50);
-       }
-
 	/*
 	 * If the new clock divider is higher than the previous, then
 	 * program the divider before switching the clock
@@ -643,11 +665,6 @@ if(hunt_s->a11clk_khz==800000) {
 	/* Program clock source selection */
 	reg_clksel ^= 1;
 	writel_relaxed(reg_clksel, A11S_CLK_SEL_ADDR);
-/* Restore from overclocking */	
-  if (hunt_s->a11clk_khz <= 600000) {
-                writel(PLL_1200_MHZ, PLLn_L_VAL(2)); /* This is for restoring original speed of PLL2 when we are not over clocking. */
-               udelay(50);
-       }
 
 	/*
 	 * If the new clock divider is lower than the previous, then
@@ -719,6 +736,11 @@ static int acpuclk_7201_set_rate(int cpu, unsigned long rate,
 	if (reason == SETRATE_CPUFREQ || reason == SETRATE_PC) {
 		/* Increase VDD if needed. */
 		if (tgt_s->vdd > cur_s->vdd) {
+#ifdef CONFIG_MACH_PRIMODD
+			if(10!=vdd_pa)
+				rc = acpuclk_set_vdd_level(vdd_pa);
+			else
+#endif
 				rc = acpuclk_set_vdd_level(tgt_s->vdd);
 			if (rc < 0) {
 				pr_err("Unable to switch ACPU vdd (%d)\n", rc);
@@ -793,7 +815,6 @@ static int acpuclk_7201_set_rate(int cpu, unsigned long rate,
 		/* Re-adjust lpj for the new clock speed. */
 		loops_per_jiffy = cur_s->lpj;
 		mb();
-		//udelay(drv_state.acpu_switch_time_us);
 		udelay(50);
 	}
 
@@ -826,6 +847,11 @@ static int acpuclk_7201_set_rate(int cpu, unsigned long rate,
 
 	/* Drop VDD level if we can. */
 	if (tgt_s->vdd < strt_s->vdd) {
+#ifdef CONFIG_MACH_PRIMODD
+			if(10!=vdd_pa)
+				res = acpuclk_set_vdd_level(vdd_pa);
+			else
+#endif
 				res = acpuclk_set_vdd_level(tgt_s->vdd);
 		if (res < 0)
 			pr_warning("[K] Unable to drop ACPU vdd (%d)\n", res);
@@ -908,11 +934,6 @@ static unsigned long acpuclk_7201_get_rate(int cpu)
 		return 0;
 }
 
-uint32_t acpuclk_7201_get_switch_time(void)
-{
-	return drv_state.acpu_switch_time_us;
-}
-
 /*----------------------------------------------------------------------------
  * Clock driver initialization
  *---------------------------------------------------------------------------*/
@@ -978,10 +999,10 @@ static void __init acpu_freq_tbl_fixup(void)
 	if (cpu_is_msm7x25a()) {
 		if (pll1_l == PLL_245_MHZ) {
 			acpu_freq_tbl =
-				pll0_960_pll1_245_pll2_1200_25a;
+				pll0_960_pll1_245_pll2_1200_pll4_800_25a;
 		} else if (pll1_l == PLL_737_MHZ) {
 			acpu_freq_tbl =
-				pll0_960_pll1_737_pll2_1200_25a;
+				pll0_960_pll1_737_pll2_1200_pll4_800_25a;
 		}
 	} else {
 		/* Select the right table to use. */
@@ -1176,10 +1197,62 @@ static struct acpuclk_data acpuclk_7201_data = {
 	.power_collapse_khz = POWER_COLLAPSE_KHZ,
 	.switch_time_us = 50,
 };
+#ifdef CONFIG_MACH_PRIMODD
+static ssize_t set_vdd4patest_store(struct kobject *kobj,
+				struct kobj_attribute *attr,
+				const char *buf, size_t n)
+{
+	unsigned int val=7;
+	sscanf(buf, "%u", &val);
+	printk("set_vdd4patest_store=%d\r\n",val);
+	if((val<11)&&(val>=0))
+	{
+		vdd_pa=val;
+		return n;
+	}
+	else
+		return -EINVAL;
 
+}
+
+static ssize_t set_vdd4patest_show (struct kobject *kobj,
+				      struct kobj_attribute *attr, char *buf)
+{
+	char *s = buf;
+	printk("set_vdd4patest_show=%d\r\n",vdd_pa);
+	s += sprintf(buf, "%u\r\n",vdd_pa);
+	return s - buf;
+}
+
+
+
+
+#define power_ro_attr(_name) \
+static struct kobj_attribute _name##_attr = {	\
+	.attr	= {				\
+		.name = __stringify(_name),	\
+		.mode = S_IRWXUGO,			\
+	},					\
+	.show	= _name##_show,			\
+	.store	= _name##_store,		\
+}
+
+power_ro_attr(set_vdd4patest);
+
+
+static struct attribute *g[] = {
+	&set_vdd4patest_attr.attr,
+	NULL,
+};
+static struct attribute_group attr_group = {
+	.attrs = g
+};
+#endif
 static int __init acpuclk_7201_init(struct acpuclk_soc_data *soc_data)
 {
-
+#ifdef CONFIG_MACH_PRIMODD
+	int ret;
+#endif
 	pr_info("%s()\n", __func__);
 
 	drv_state.ebi1_clk = clk_get(NULL, "ebi1_acpu_clk");
@@ -1203,12 +1276,17 @@ static int __init acpuclk_7201_init(struct acpuclk_soc_data *soc_data)
 	cpufreq_table_init();
 	cpufreq_frequency_table_get_attr(freq_table, smp_processor_id());
 #endif
+#ifdef CONFIG_MACH_PRIMODD
+	ret = sysfs_create_group(power_kobj, &attr_group);
+	if(ret)
+		pr_warning("Create sysfs for PA test fail!\n");
+#endif
 	return 0;
 }
 
 struct acpuclk_soc_data acpuclk_7201_soc_data __initdata = {
-	.max_speed_delta_khz = 480000,
-	.max_axi_khz = 160000, // need to tset 160000
+	.max_speed_delta_khz = 400000,
+	.max_axi_khz = 160000,
 	.init = acpuclk_7201_init,
 };
 

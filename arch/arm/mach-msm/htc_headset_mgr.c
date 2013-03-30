@@ -57,7 +57,6 @@ struct button_work {
 	int key_code;
 };
 
-static struct delayed_work *pre_key_work;
 static struct htc_headset_mgr_info *hi;
 static struct hs_notifier_func hs_mgr_notifier;
 
@@ -88,10 +87,7 @@ void hs_notify_driver_ready(char *name)
 void hs_notify_hpin_irq(void)
 {
 	hi->hpin_jiffies = jiffies;
-	if (hs_mgr_notifier.hpin_gpio)
-		HS_LOG("HPIN IRQ (%d)", hs_mgr_notifier.hpin_gpio());
-	else
-		HS_LOG("HPIN IRQ");
+	HS_LOG("HPIN IRQ");
 }
 
 struct class *hs_get_attribute_class(void)
@@ -666,7 +662,6 @@ static void button_35mm_work_func(struct work_struct *work)
 		default:
 			HS_LOG("3.5mm RC: WRONG Button Pressed");
 			kfree(works);
-			pre_key_work = NULL;
 			return;
 		}
 		headset_button_event(1, key);
@@ -678,7 +673,6 @@ static void button_35mm_work_func(struct work_struct *work)
 	}
 
 	kfree(works);
-	pre_key_work = NULL;
 }
 
 static void debug_work_func(struct work_struct *work)
@@ -845,11 +839,11 @@ static void insert_detect_work_func(struct work_struct *work)
 		break;
 	case HEADSET_BEATS:
 		state |= BIT_HEADSET;
-		HS_LOG_TIME("HEADSET_BEATS");
+		HS_LOG_TIME("HEADSET_BEATS (UNSTABLE)");
 		break;
 	case HEADSET_BEATS_SOLO:
 		state |= BIT_HEADSET;
-		HS_LOG_TIME("HEADSET_BEATS_SOLO");
+		HS_LOG_TIME("HEADSET_BEATS_SOLO (UNSTABLE)");
 		break;
 	case HEADSET_INDICATOR:
 		HS_LOG_TIME("HEADSET_INDICATOR");
@@ -893,7 +887,6 @@ static void insert_detect_work_func(struct work_struct *work)
 
 int hs_notify_plug_event(int insert)
 {
-	int ret = 0;
 	HS_DBG("Headset status %d", insert);
 
 	mutex_lock(&hi->mutex_lock);
@@ -901,12 +894,8 @@ int hs_notify_plug_event(int insert)
 	mutex_unlock(&hi->mutex_lock);
 
 	cancel_delayed_work_sync(&mic_detect_work);
-	ret = cancel_delayed_work_sync(&insert_detect_work);
-	if (ret && hs_mgr_notifier.key_int_enable)
-		hs_mgr_notifier.key_int_enable(1);
-	ret = cancel_delayed_work_sync(&remove_detect_work);
-	if (ret && hs_mgr_notifier.key_int_enable)
-		hs_mgr_notifier.key_int_enable(0);
+	cancel_delayed_work_sync(&insert_detect_work);
+	cancel_delayed_work_sync(&remove_detect_work);
 
 	if (hi->is_ext_insert)
 		queue_delayed_work(detect_wq, &insert_detect_work,
@@ -926,15 +915,9 @@ int hs_notify_plug_event(int insert)
 int hs_notify_key_event(int key_code)
 {
 	struct button_work *work;
-	int ret;
 
 	HS_DBG();
 
-	if (pre_key_work) {
-		ret = cancel_delayed_work_sync(pre_key_work);
-		if (ret)
-			HS_LOG("Previous key code cancelled");
-	}
 	if (hi->hs_35mm_type == HEADSET_INDICATOR) {
 		HS_LOG("Not support remote control");
 		return 1;
@@ -961,14 +944,8 @@ int hs_notify_key_event(int key_code)
 		}
 		work->key_code = key_code;
 		INIT_DELAYED_WORK(&work->key_work, button_35mm_work_func);
-		pre_key_work = &work->key_work;
-		if (hi->pdata.driver_flag & DRIVER_HS_MGR_OLD_AJ) {
-			queue_delayed_work(button_wq, &work->key_work,
-					   HS_JIFFIES_BUTTON_LONG);
-		} else {
-			queue_delayed_work(button_wq, &work->key_work,
-					   HS_JIFFIES_BUTTON);
-		}
+		queue_delayed_work(button_wq, &work->key_work,
+				   HS_JIFFIES_BUTTON);
 	}
 
 	return 1;

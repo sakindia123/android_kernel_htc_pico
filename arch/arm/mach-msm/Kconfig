@@ -1239,6 +1239,10 @@ config BUILD_OMA_DM
 	help
 	  For OMA-DM we need to do some additional fixes.
 
+config BUILD_FOR_AOSP
+	default n
+	bool "Build Kernel for AOSP based ROMs"
+
 config QSD_SVS
 	bool "QSD Static Voltage Scaling"
 	depends on (MACH_QSD8X50_SURF || MACH_QSD8X50_FFA)

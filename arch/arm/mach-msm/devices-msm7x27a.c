@@ -25,8 +25,7 @@
 #include <asm/mach/mmc.h>
 #include <mach/rpc_hsusb.h>
 #include <mach/socinfo.h>
-#include <mach/usb_gadget_fserial.h>
-#include <mach/usbdiag.h>
+
 #include "devices.h"
 #include "devices-msm7x2xa.h"
 #include "footswitch.h"
@@ -211,31 +210,6 @@ int msm_add_host(unsigned int host, struct msm_usb_host_platform_data *plat)
 	return platform_device_register(pdev);
 }
 
-struct usb_diag_platform_data usb_diag_pdata = {
-       .ch_name = DIAG_LEGACY,
-       .update_pid_and_serial_num = usb_diag_update_pid_and_serial_num,
-};
-
-struct platform_device usb_diag_device = {
-      .name = "usb_diag",
-      .id = -1,
-      .dev = {
-      .platform_data = &usb_diag_pdata,
-      },
-};
-
-static struct usb_gadget_fserial_platform_data fserial_pdata = {
-      .no_ports = 2,
-};
-
-struct platform_device usb_gadget_fserial_device = {
-      .name = "usb_fserial",
-      .id = -1,
-      .dev = {
-      .platform_data = &fserial_pdata,
-      },
-};
-
 static struct resource msm_dmov_resource[] = {
 	{
 		.start	= INT_ADM_AARM,
@@ -371,35 +345,13 @@ static struct resource msm_uart2dm_resources[] = {
 		.end	= INT_UART2DM_IRQ,
 		.flags	= IORESOURCE_IRQ,
 	},
-	{
-		.start = INT_UART2DM_RX,
-		.end   = INT_UART2DM_RX,
-		.flags = IORESOURCE_IRQ,
-	},
-	{
-		.start = DMOV_HSUART2_TX_CHAN,
-		.end   = DMOV_HSUART2_RX_CHAN,
-		.name  = "uartdm_channels",
-		.flags = IORESOURCE_DMA,
-	},
-	{
-		.start = DMOV_HSUART2_TX_CRCI,
-		.end   = DMOV_HSUART2_RX_CRCI,
-		.name  = "uartdm_crci",
-		.flags = IORESOURCE_DMA,
-	},
 };
 
-static u64 msm_uart_dm2_dma_mask = DMA_BIT_MASK(32);
 struct platform_device msm_device_uart_dm2 = {
-	.name	= "msm_serial_hs",
-	.id	= 1,
+	.name	= "msm_serial_hsl",
+	.id	= 0,
 	.num_resources	= ARRAY_SIZE(msm_uart2dm_resources),
 	.resource	= msm_uart2dm_resources,
-	.dev	= {
-		.dma_mask		= &msm_uart_dm2_dma_mask,
-		.coherent_dma_mask	= DMA_BIT_MASK(32),
-	},
 };
 
 #define MSM_NAND_PHYS		0xA0A00000
@@ -716,22 +668,23 @@ static struct resource kgsl_3d0_resources[] = {
 static struct kgsl_device_platform_data kgsl_3d0_pdata = {
 	.pwrlevel = {
 		{
-			.gpu_freq = 307200000, 
-                        .bus_freq = 213760000,
-		},
-		{
 			.gpu_freq = 245760000,
 			.bus_freq = 200000000,
 		},
 		{
 			.gpu_freq = 192000000,
-			.bus_freq = 160000000, 
+			.bus_freq = 160000000,
+		},
+		{
+			.gpu_freq = 133330000,
+			.bus_freq = 0,
 		},
 	},
 	.init_level = 0,
 	.num_levels = 3,
 	.set_grp_async = set_grp_xbar_async,
 	.idle_timeout = HZ/5,
+	.strtstp_sleepwake = true,
 	.nap_allowed = false,
 	.clk_map = KGSL_CLK_CORE | KGSL_CLK_IFACE | KGSL_CLK_MEM,
 };
@@ -754,8 +707,8 @@ void __init msm7x25a_kgsl_3d0_init(void)
 		kgsl_3d0_pdata.pwrlevel[0].bus_freq = 160000000;
 		kgsl_3d0_pdata.pwrlevel[1].gpu_freq = 96000000;
 		kgsl_3d0_pdata.pwrlevel[1].bus_freq = 0;
+	}
 }
-   }
 
 static void __init msm_register_device(struct platform_device *pdev, void *data)
 {

@@ -143,3 +143,4 @@ int __init pico_init_keypad(void)
 
 	return platform_device_register(&pico_keypad_device);
 }
+

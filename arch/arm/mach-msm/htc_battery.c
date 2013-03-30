@@ -290,7 +290,7 @@ static int __init enable_zcharge_setup(char *str)
 }
 __setup("enable_zcharge=", enable_zcharge_setup);
 
-static int htc_is_cable_in(void)
+int htc_is_cable_in(void)
 {
 	if (!htc_batt_info.update_time) {
 		BATT_ERR("%s: battery driver hasn't been initialized yet.", __func__);

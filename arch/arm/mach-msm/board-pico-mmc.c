@@ -37,9 +37,6 @@
 #include <mach/dma.h>
 #include "../../../drivers/mmc/host/msm_sdcc.h"
 
-
-extern int msm_add_sdcc(unsigned int controller, struct mmc_platform_data *plat);
-
 #if (defined(CONFIG_MMC_MSM_SDC1_SUPPORT)\
 	|| defined(CONFIG_MMC_MSM_SDC2_SUPPORT)\
 	|| defined(CONFIG_MMC_MSM_SDC3_SUPPORT)\
@@ -76,6 +73,21 @@ static struct msm_gpio sdc1_cfg_data[] = {
 	{GPIO_CFG(55, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_10MA),
 								"sdc1_cmd"},
 	{GPIO_CFG(56, 1, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_16MA),
+								"sdc1_clk"},
+};
+
+static struct msm_gpio sdc1_sleep_cfg_data[] = {
+	{GPIO_CFG(51, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+								"sdc1_dat_3"},
+	{GPIO_CFG(52, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+								"sdc1_dat_2"},
+	{GPIO_CFG(53, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+								"sdc1_dat_1"},
+	{GPIO_CFG(54, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+								"sdc1_dat_0"},
+	{GPIO_CFG(55, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+								"sdc1_cmd"},
+	{GPIO_CFG(56, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
 								"sdc1_clk"},
 };
 
@@ -153,6 +165,7 @@ static struct sdcc_gpio sdcc_cfg_data[] = {
 	{
 		.cfg_data = sdc1_cfg_data,
 		.size = ARRAY_SIZE(sdc1_cfg_data),
+		.sleep_cfg_data = sdc1_sleep_cfg_data,
 	},
 	{
 		.cfg_data = sdc2_cfg_data,
@@ -415,15 +428,15 @@ static uint32_t wifi_off_gpio_table[] = {
 
 static void config_wifi_gpio_table(uint32_t *table, int len)
 {
-        int n, rc;
-        for (n = 0; n < len; n++) {
-                rc = gpio_tlmm_config(table[n], GPIO_CFG_ENABLE);
-                if (rc) {
-                        pr_err("%s: gpio_tlmm_config(%#x)=%d\n",
-                                __func__, table[n], rc);
-                        break;
-                }
-        }
+	int n, rc;
+	for (n = 0; n < len; n++) {
+		rc = gpio_tlmm_config(table[n], GPIO_CFG_ENABLE);
+		if (rc) {
+			pr_err("%s: gpio_tlmm_config(%#x)=%d\n",
+			__func__, table[n], rc);
+			break;
+		}
+	}
 }
 
 /* BCM4330 returns wrong sdio_vsn(1) when we read cccr,
@@ -464,17 +477,17 @@ static unsigned int pico_wifi_status(struct device *dev)
 
 static unsigned int pico_wifislot_type = MMC_TYPE_SDIO_WIFI;
 static struct mmc_platform_data pico_wifi_data = {
-        .ocr_mask               = MMC_VDD_24_25,
-        .status                 = pico_wifi_status,
-        .register_status_notify = pico_wifi_status_register,
-        .embedded_sdio          = &pico_wifi_emb_data,
-        .mmc_bus_width  = MMC_CAP_4_BIT_DATA,
-        .slot_type		= &pico_wifislot_type,
-        .msmsdcc_fmin   = 400000,
-        .msmsdcc_fmid   = 24000000,
-        .msmsdcc_fmax   = 50000000,
-        .nonremovable   = 0,
-        .dummy52_required = 1,
+	.ocr_mask               = MMC_VDD_28_29,
+	.status                 = pico_wifi_status,
+	.register_status_notify = pico_wifi_status_register,
+	.embedded_sdio          = &pico_wifi_emb_data,
+	.mmc_bus_width  = MMC_CAP_4_BIT_DATA,
+	.slot_type		= &pico_wifislot_type,
+	.msmsdcc_fmin   = 400000,
+	.msmsdcc_fmid   = 24000000,
+	.msmsdcc_fmax   = 50000000,
+	.nonremovable   = 0,
+	/*.dummy52_required = 1,*/
 };
 
 
@@ -492,23 +505,23 @@ EXPORT_SYMBOL(pico_wifi_set_carddetect);
 
 int pico_wifi_power(int on)
 {
-	//const unsigned SDC4_HDRV_PULL_CTL_ADDR = (unsigned) MSM_TLMM_BASE + 0x20A0;
+	/*const unsigned SDC4_HDRV_PULL_CTL_ADDR = (unsigned) MSM_TLMM_BASE + 0x20A0;*/
 
 	printk(KERN_INFO "%s: %d\n", __func__, on);
 
 	if (on) {
-		//SDC4_CMD_PULL = Pull Up, SDC4_DATA_PULL = Pull up
-		//writel(0x1FDB, SDC4_HDRV_PULL_CTL_ADDR);
+		/*SDC4_CMD_PULL = Pull Up, SDC4_DATA_PULL = Pull up*/
+		/*writel(0x1FDB, SDC4_HDRV_PULL_CTL_ADDR);*/
 		config_wifi_gpio_table(wifi_on_gpio_table,
 				  ARRAY_SIZE(wifi_on_gpio_table));
 	} else {
-		//SDC4_CMD_PULL = Pull Down, SDC4_DATA_PULL = Pull Down
-		//writel(0x0BDB, SDC4_HDRV_PULL_CTL_ADDR);
+		/*SDC4_CMD_PULL = Pull Down, SDC4_DATA_PULL = Pull Down*/
+		/*writel(0x0BDB, SDC4_HDRV_PULL_CTL_ADDR);*/
 		config_wifi_gpio_table(wifi_off_gpio_table,
 				  ARRAY_SIZE(wifi_off_gpio_table));
 	}
-	htc_wifi_bt_sleep_clk_ctl(on, ID_WIFI);
-	mdelay(1);//Delay 1 ms, Recommand by Hardware
+	/*htc_wifi_bt_sleep_clk_ctl(on, ID_WIFI);*/
+	mdelay(1);/*Delay 1 ms, Recommand by Hardware*/
 	gpio_set_value(PICO_GPIO_WIFI_SHUTDOWN_N, on); /* WIFI_SHUTDOWN */
 
 	mdelay(120);

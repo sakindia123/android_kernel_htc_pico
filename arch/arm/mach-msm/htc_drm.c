@@ -242,7 +242,6 @@ int oem_rapi_client_streaming_function(
 }
 EXPORT_SYMBOL(oem_rapi_client_streaming_function);
 
-
 int oem_rapi_client_close(void)
 {
 	mutex_lock(&oem_rapi_client_lock);
@@ -269,7 +268,7 @@ struct msm_rpc_client *oem_rapi_client_init(void)
 		if (!IS_ERR(rpc_client))
 			open_count++;
 	} else {
-		// increase the counter 
+		/* increase the counter */
 		open_count++;
 	}
 	mutex_unlock(&oem_rapi_client_lock);

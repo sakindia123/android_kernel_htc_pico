@@ -32,24 +32,38 @@
 #include <asm/cacheflush.h>
 
 #include "smd_private.h"
+#include <mach/htc_acoustic.h>
 
 #define ACOUSTIC_IOCTL_MAGIC 'p'
 #define ACOUSTIC_ARM11_DONE _IOW(ACOUSTIC_IOCTL_MAGIC, 22, unsigned int)
 #define ACOUSTIC_ALLOC_SMEM _IOW(ACOUSTIC_IOCTL_MAGIC, 23, unsigned int)
 #define SET_VR_MODE	        _IOW(ACOUSTIC_IOCTL_MAGIC, 24, unsigned int)
 #define ACOUSTIC_SET_HAC _IOW(ACOUSTIC_IOCTL_MAGIC, 25, unsigned int)
+#define ACOUSTIC_SET_FM_VOLUME _IOW(ACOUSTIC_IOCTL_MAGIC, 26, unsigned int)
+#define ACOUSTIC_SET_TX_MUTE _IOW(ACOUSTIC_IOCTL_MAGIC, 27, unsigned int)
+#define ACOUSTIC_ENABLE_BEATS _IOW(ACOUSTIC_IOCTL_MAGIC, 28, unsigned int)
+#define ACOUSTIC_ENABLE_SH _IOW(ACOUSTIC_IOCTL_MAGIC, 29, unsigned int)
+#define ACOUSTIC_SET_CDMA_MUTE _IOW(ACOUSTIC_IOCTL_MAGIC, 30, unsigned int)
+#define ACOUSTIC_SET_BEATS_CONFIG _IOW(ACOUSTIC_IOCTL_MAGIC, 31, unsigned int)
+#define ACOUSTIC_GET_TABLES 	_IOW(ACOUSTIC_IOCTL_MAGIC, 32, unsigned)
 
 #define HTCRPOG	0x30100002
 #define HTCVERS 0
 #if defined(CONFIG_ARCH_MSM7X27A)
-#define HTC_ACOUSTIC_TABLE_SIZE        (0x18000)
+#define HTC_ACOUSTIC_TABLE_SIZE        (0x20000)
 #else
 #define HTC_ACOUSTIC_TABLE_SIZE        (0x10000)
 #endif
 #define ONCRPC_SET_MIC_BIAS_PROC       (1)
 #define ONCRPC_ACOUSTIC_INIT_PROC      (5)
 #define ONCRPC_ALLOC_ACOUSTIC_MEM_PROC (6)
+#define ONCRPC_MUTE_TX_VOL_PROC        (8)
 #define ONCRPC_ENABLE_VR_MODE          (9)
+#define ONCRPC_SET_FM_VOLUME_PROC      (10)
+#define ONCRPC_ENABLE_BEATS_PROC       (11)
+#define ONCRPC_ENABLE_SH_PROC          (12)
+#define ONCRPC_MUTE_CDMA_PROC          (13)
+#define ONCRPC_SET_BEATS_CONFIG_PROC   (14)
 
 struct set_smem_req {
 	struct rpc_request_hdr hdr;
@@ -89,6 +103,13 @@ static int table_size = 6 * 160 * sizeof(unsigned short);
 #endif
 static int swap_f_table(int);
 static int first_time = 1;
+static struct acoustic_ops default_acoustic_ops;
+static struct acoustic_ops * the_ops = &default_acoustic_ops;
+
+void acoustic_register_ops(struct acoustic_ops *ops)
+{
+	the_ops = ops;
+}
 
 static int is_rpc_connect(void)
 {
@@ -122,6 +143,9 @@ int enable_mic_bias(int on)
 
 	if (is_rpc_connect() == -1)
 		return -EIO;
+
+	if (the_ops->enable_mic_bias)
+		the_ops->enable_mic_bias(on, 1);
 
 	req.on = cpu_to_be32(on);
 	return msm_rpc_call(endpoint, ONCRPC_SET_MIC_BIAS_PROC,
@@ -243,13 +267,35 @@ static int acoustic_release(struct inode *inode, struct file *file)
 static long acoustic_ioctl(struct file *file, unsigned int cmd,
 			   unsigned long arg)
 {
-	int rc, reply_value;
-	int vr_arg;
-	int hac_arg;
+	int rc = -1, reply_value;
+	int vr_arg, hac_arg, mute_arg, beats_arg, sh_arg;
+	int cdma_mute_arg, beats_cfg_arg;
+	uint32_t level;
+
 	struct vr_mode_req {
-	    struct rpc_request_hdr hdr;
-	    uint32_t enable;
+		struct rpc_request_hdr hdr;
+		uint32_t enable;
 	} vr_req;
+
+	struct fm_vol_req {
+		struct rpc_request_hdr hdr;
+		uint32_t volume;
+	} vol_req;
+
+	struct tx_mute_req {
+		struct rpc_request_hdr hdr;
+		int mute;
+	} mute_req, cdma_mute_req;
+
+	struct enable_req {
+		struct rpc_request_hdr hdr;
+		int enable;
+	} beats_req, sh_req;
+
+	struct cfg_req {
+		struct rpc_request_hdr hdr;
+		int cfg;
+	} beats_cfg_req;
 
 	switch (cmd) {
 	case ACOUSTIC_ARM11_DONE:
@@ -312,6 +358,110 @@ static long acoustic_ioctl(struct file *file, unsigned int cmd,
 		mutex_unlock(&acoustic_lock);
 		rc = 0;
 		break;
+	case ACOUSTIC_SET_FM_VOLUME:
+		if (copy_from_user(&level, (void *)arg, sizeof(level))) {
+		    rc = -EFAULT;
+		    break;
+		}
+		vol_req.volume = cpu_to_be32(level);
+		pr_aud_info("htc_acoustic set_fm_volume: level %d\n", level);
+		rc = msm_rpc_call(endpoint, ONCRPC_SET_FM_VOLUME_PROC,
+			&vol_req, sizeof(vol_req), 5 * HZ);
+		if (rc < 0)
+			pr_aud_err("ONCRPC_SET_FM_VOLUME_PROC failed %d.\n", rc);
+		break;
+	case ACOUSTIC_SET_TX_MUTE:
+		if (copy_from_user(&mute_arg, (void *)arg, sizeof(mute_arg))) {
+		    rc = -EFAULT;
+		    break;
+		}
+		mute_req.mute = cpu_to_be32(mute_arg);
+		pr_aud_info("htc_acoustic set_tx_mute: %d\n", mute_arg);
+		rc = msm_rpc_call(endpoint, ONCRPC_MUTE_TX_VOL_PROC,
+			&mute_req, sizeof(mute_req), 5*HZ);
+		if (rc < 0)
+			pr_aud_err("ONCRPC_MUTE_TX_VOL_PROC failed %d.\n", rc);
+		break;
+	case ACOUSTIC_ENABLE_BEATS:
+		if (copy_from_user(&beats_arg, (void *)arg, sizeof(beats_arg))) {
+		    rc = -EFAULT;
+		    break;
+		}
+
+		if (the_ops->enable_beats) {
+			rc = the_ops->enable_beats(beats_arg);
+			pr_aud_info("the_ops->enable_beats rc is %d\n",rc);
+		}
+		
+		if (rc < 0) {
+			beats_req.enable = cpu_to_be32(beats_arg);
+			pr_aud_info("htc_acoustic enable_beats: %d\n", beats_arg);
+
+			rc = msm_rpc_call(endpoint, ONCRPC_ENABLE_BEATS_PROC,
+				&beats_req, sizeof(beats_req), 5*HZ);
+			pr_aud_info("rc is %d\n",rc);
+		}
+		if (rc < 0)
+			pr_aud_err("ONCRPC_ENABLE_BEATS_PROC failed %d.\n", rc);
+		break;
+	case ACOUSTIC_ENABLE_SH:
+		if (copy_from_user(&sh_arg, (void *)arg, sizeof(sh_arg))) {
+		    rc = -EFAULT;
+		    break;
+		}
+		sh_req.enable = cpu_to_be32(sh_arg);
+		pr_aud_info("htc_acoustic enable_soundhound: %d\n", sh_arg);
+		rc = msm_rpc_call(endpoint, ONCRPC_ENABLE_SH_PROC,
+			&sh_req, sizeof(sh_req), 5*HZ);
+		if (rc < 0)
+			pr_aud_err("ONCRPC_ENABLE_SH_PROC failed %d.\n", rc);
+		break;
+	case ACOUSTIC_SET_CDMA_MUTE:
+		if (copy_from_user(&cdma_mute_arg, (void *)arg, sizeof(cdma_mute_arg))) {
+		    rc = -EFAULT;
+		    break;
+		}
+		cdma_mute_req.mute = cpu_to_be32(cdma_mute_arg);
+		pr_aud_info("htc_acoustic set_CDMA_mute: %d\n", cdma_mute_arg);
+		rc = msm_rpc_call(endpoint, ONCRPC_MUTE_CDMA_PROC,
+			&cdma_mute_req, sizeof(cdma_mute_req), 5*HZ);
+		if (rc < 0)
+			pr_aud_err("ONCRPC_MUTE_CDMA_PROC failed %d.\n", rc);
+		break;
+	case ACOUSTIC_SET_BEATS_CONFIG:
+		if (copy_from_user(&beats_cfg_arg, (void *)arg, sizeof(beats_cfg_arg))) {
+		    rc = -EFAULT;
+		    break;
+		}
+		beats_cfg_req.cfg = cpu_to_be32(beats_cfg_arg);
+		pr_aud_info("htc_acoustic set_beats_cfg: %d\n", beats_cfg_arg);
+		rc = msm_rpc_call(endpoint, ONCRPC_SET_BEATS_CONFIG_PROC,
+			&beats_cfg_req, sizeof(beats_cfg_req), 5*HZ);
+		if (rc < 0)
+			pr_aud_err("ONCRPC_SET_BEATS_CONFIG_PROC failed %d.\n", rc);
+		break;
+	case ACOUSTIC_GET_TABLES: {
+		if (the_ops->get_acoustic_tables) {
+			struct acoustic_tables tb;
+			memset(tb.acoustic, '\0', PROPERTY_VALUE_MAX);
+			memset(tb.acoustic_wb, '\0', PROPERTY_VALUE_MAX);
+			memset(tb.aic3254, '\0', PROPERTY_VALUE_MAX);
+			memset(tb.aic3254_dsp, '\0', PROPERTY_VALUE_MAX);
+			memset(tb.spkamp, '\0', PROPERTY_VALUE_MAX);
+			pr_aud_info("call get_acoustic_tables!\n");
+			the_ops->get_acoustic_tables(&tb);
+			if (copy_to_user((void *) arg,
+				&tb, sizeof(tb))) {
+				pr_aud_err("acoustic_ioctl: "
+					"ACOUSTIC_ACOUSTIC_GET_TABLES failed\n");
+				rc = -EFAULT;
+			} else
+				rc = 0;
+		} else
+			rc = -EFAULT;
+		pr_aud_info("ACOUSTIC_GET_TABLES: return %d\n", rc);
+		break;
+	}
 	default:
 		rc = -EINVAL;
 	}

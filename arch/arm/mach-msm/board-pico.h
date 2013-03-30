@@ -23,29 +23,26 @@ int __init pico_init_panel(void);
 int __init pico_wifi_init(void);
 
 #define MSM_MEM_BASE		0x10000000
-#ifdef CONFIG_SMART_DUMMY_PICO
-#define MSM_MEM_SIZE		0x10000000
-#else
 #define MSM_MEM_SIZE		0x20000000
-#endif
 
 #define MSM_LINUX_BASE_OFFSET	0x02C00000
 
-#define MSM_MM_HEAP_SIZE	0x00300000
+#define MSM_FB_BASE             0x2FE00000
+#define MSM_FB_SIZE             0x00200000
 
 #define MSM_LINUX_BASE          (MSM_MEM_BASE + MSM_LINUX_BASE_OFFSET) /* 2MB alignment */
-#define MSM_LINUX_SIZE          (MSM_MEM_SIZE - MSM_LINUX_BASE_OFFSET - MSM_MM_HEAP_SIZE)
+#define MSM_LINUX_SIZE          (MSM_MEM_SIZE - MSM_LINUX_BASE_OFFSET - MSM_FB_SIZE - 0x100000)/*1MB for ram console*/
 
-#define MSM_RAM_CONSOLE_BASE    (MSM_MEM_BASE + MSM_MEM_SIZE - MSM_MM_HEAP_SIZE) /* MSM_HTC_RAM_CONSOLE_PHYS must be the same */
-
+/* Must be same as MSM_HTC_RAM_CONSOLE_PHYS */
+#define MSM_RAM_CONSOLE_BASE    0x2FD00000
 #define MSM_RAM_CONSOLE_SIZE    MSM_HTC_RAM_CONSOLE_SIZE
 
-#define MSM_FB_BASE             (MSM_RAM_CONSOLE_BASE + MSM_RAM_CONSOLE_SIZE + MSM_HTC_DEBUG_INFO_SIZE) /* 0x2FE00000 */
-#define MSM_FB_SIZE             0x00200000
+#define MSM_PMEM_MDP_SIZE       0x1400000
+#define MSM_PMEM_ADSP_SIZE      0xC00000
 
 #define PICO_GPIO_TO_INT(x)           (x+64) /* from gpio_to_irq */
 
-#define PICO_GPIO_USB_ID_PIN          (19)
+#define PICO_GPIO_USB_ID          (19)
 #define PICO_POWER_KEY                (20)
 #define PICO_GPIO_PS_HOLD         (25)
 #define PICO_GPIO_WIFI_IRQ            (29)
@@ -57,8 +54,15 @@ int __init pico_wifi_init(void);
 #define PICO_GPIO_VOL_DOWN            (49)
 
 /* Camera I2C */
-#define PICO_GPIO_CAMERA_SCL		  (60)
-#define PICO_GPIO_CAMERA_SDA		  (61)
+/* Camera */
+#define PICO_GPIO_CAMERA_SCL		   (60)
+#define PICO_GPIO_CAMERA_SDA		   (61)
+#define PICO_GPIO_CAMERA_RESET        (125)
+#define PICO_GPIO_CAMERA_STANDBY      (126)
+#define PICO_GPIO_CAMERA_MCLK         (15)
+#define PICO_GPIO_CAM_D1V8_EN		   (11) /* LDO trigger D1V8 */
+#define PICO_GPIO_CAM_A2V85_EN		   (12) /* LDO trigger A2V85 */
+#define PICO_GPIO_CAM_ID              (57) /* From XB board and later */
 
 /* WLAN SD data */
 #define PICO_GPIO_SD_D3               (64)
@@ -87,6 +91,7 @@ int __init pico_wifi_init(void);
 #define PICO_GPIO_AUD_PCM_CLK         (71)
 
 //#define PICO_GPIO_UP_RESET_N          (76)
+//#define PICO_GPIO_FLASHLIGHT          (85)
 #define PICO_GPIO_UART3_RX            (86)
 #define PICO_GPIO_UART3_TX            (87)
 #define PICO_GPIO_VOL_UP              (92)

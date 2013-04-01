@@ -73,7 +73,6 @@
 #include "board-pico.h"
 #include <mach/board_htc.h>
 #include <linux/htc_touch.h>
-#include <linux/htc_flashlight.h>
 #include <linux/proc_fs.h>
 #include <linux/leds-pm8029.h>
 
@@ -264,40 +263,6 @@ static struct platform_device htc_headset_mgr = {
 };
 
 /* HEADSET DRIVER END */
-
-#ifdef CONFIG_FLASHLIGHT_TPS61310
-static void config_flashlight_gpios(void)
-{
-	static uint32_t flashlight_gpio_table[] = {
-		GPIO_CFG(30, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
-		GPIO_CFG(26, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
-		GPIO_CFG(115, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
-	};
-
-	gpio_tlmm_config(flashlight_gpio_table[0], GPIO_CFG_ENABLE);
-	gpio_tlmm_config(flashlight_gpio_table[1], GPIO_CFG_ENABLE);
-	gpio_tlmm_config(flashlight_gpio_table[2], GPIO_CFG_ENABLE);
-
-	gpio_direction_output(30, 1);
-	gpio_direction_output(26, 0);
-	gpio_direction_output(115, 0);
-}
-
-static struct TPS61310_flashlight_platform_data tps61310_pdata = {
-	.gpio_init = config_flashlight_gpios,
-	.tps61310_strb0 = 26,
-	.tps61310_strb1 = 115,
-	/*.led_count = 1,*/
-	.flash_duration_ms = 600,
-};
-
-static struct i2c_board_info tps61310_i2c_info[] = {
-	{
-		I2C_BOARD_INFO("TPS61310_FLASHLIGHT", 0x66 >> 1),
-		.platform_data = &tps61310_pdata,
-	},
-};
-#endif
 
 struct platform_device htc_drm = {
 	.name = "htcdrm",
@@ -1289,14 +1254,6 @@ static uint32_t camera_on_gpio_table[] = {
 // HTC_END
 };
 
-#ifdef CONFIG_MSM_CAMERA_FLASH
-static struct msm_camera_sensor_flash_src msm_flash_src = {
-	.flash_sr_type = MSM_CAMERA_FLASH_SRC_CURRENT_DRIVER,
-	._fsrc.current_driver_src.led1 = GPIO_SURF_CAM_GP_LED_EN1,
-	._fsrc.current_driver_src.led2 = GPIO_SURF_CAM_GP_LED_EN2,
-};
-#endif
-
 //HTC_START
 //For pico camera power control
 static struct vreg *vreg_wlan4;
@@ -1414,7 +1371,6 @@ static void pico_camera_vreg_config(int vreg_en)
 
 }
 //HTC_END
-
 
 static struct vreg *vreg_gp2;
 static struct vreg *vreg_gp3;
@@ -1581,9 +1537,6 @@ static struct msm_camera_sensor_platform_info mt9t013_sensor_7627a_info = {
 // PG-POWER_SEQ-00-{
 static struct msm_camera_sensor_flash_data flash_mt9t013 = {
 	.flash_type = MSM_CAMERA_FLASH_NONE,
-#ifdef CONFIG_MSM_CAMERA_FLASH
-	.flash_src  = &msm_flash_src
-#endif
 };
 // PG-POWER_SEQ-00-}
 static struct msm_camera_sensor_info msm_camera_sensor_mt9t013_data = {
@@ -2616,12 +2569,6 @@ static void __init pico_init(void)
 
 	i2c_register_board_info(MSM_GSBI1_QUP_I2C_BUS_ID,
 			i2c_tps65200_devices, ARRAY_SIZE(i2c_tps65200_devices));
-
-#ifdef CONFIG_FLASHLIGHT_TPS61310
-	i2c_register_board_info(MSM_GSBI1_QUP_I2C_BUS_ID,
-				tps61310_i2c_info,
-				ARRAY_SIZE(tps61310_i2c_info));
-#endif
 
 	i2c_register_board_info(MSM_GSBI1_QUP_I2C_BUS_ID,
 		atmel_ts_i2c_info,

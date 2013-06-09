@@ -789,6 +789,14 @@
 #define OLIMEX_ARM_USB_OCD_PID		0x0003
 #define OLIMEX_ARM_USB_OCD_H_PID	0x002b
 
+
+/*
+ * Physik Instrumente
+ * http://www.physikinstrumente.com/en/products/
+ */
+#define PI_VID              0x1a72  /* Vendor ID */
+#define PI_E861_PID         0x1008  /* E-861 piezo controller USB connection */
+
 /*
  * Telldus Technologies
  */

@@ -1,0 +1,45 @@
+From 7e640067c370d506cdbab7a5cb86c8b97d4b7a2f Mon Sep 17 00:00:00 2001
+From: Coolexe <kimithemes@gmail.com>
+Date: Tue, 11 Dec 2012 19:35:57 +0530
+Subject: [PATCH] PATCH: applied linux kernel patch 3.0.54->55
+
+---
+ Makefile                 | 2 +-
+ arch/x86/kernel/ptrace.c | 2 ++
+ 2 files changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/Makefile b/Makefile
+index 83c064d..32a110b 100644
+--- a/Makefile
++++ b/Makefile
+@@ -1,6 +1,6 @@
+ VERSION = 3
+ PATCHLEVEL = 0
+-SUBLEVEL = 54
++SUBLEVEL = 55
+ EXTRAVERSION =
+ NAME = Sneaky Weasel
+ 
+diff --git a/arch/x86/kernel/ptrace.c b/arch/x86/kernel/ptrace.c
+index 8ede567..911e16d 100644
+--- a/arch/x86/kernel/ptrace.c
++++ b/arch/x86/kernel/ptrace.c
+@@ -21,6 +21,7 @@
+ #include <linux/signal.h>
+ #include <linux/perf_event.h>
+ #include <linux/hw_breakpoint.h>
++#include <linux/module.h>
+ 
+ #include <asm/uaccess.h>
+ #include <asm/pgtable.h>
+@@ -191,6 +192,7 @@ unsigned long kernel_stack_pointer(struct pt_regs *regs)
+ 
+ 	return (unsigned long)regs;
+ }
++EXPORT_SYMBOL_GPL(kernel_stack_pointer);
+ 
+ static unsigned long *pt_regs_access(struct pt_regs *regs, unsigned long regno)
+ {
+-- 
+1.8.1.6
+

@@ -22,6 +22,7 @@
 #include <linux/random.h>
 #include <linux/bitops.h>
 #include <linux/blkdev.h>
+#include <linux/math64.h>
 #include <asm/byteorder.h>
 
 #include "ext4.h"
@@ -312,7 +313,7 @@ static void get_orlov_stats(struct super_block *sb, ext4_group_t g,
 
 	if (flex_size > 1) {
 		stats->free_inodes = atomic_read(&flex_group[g].free_inodes);
-		stats->free_blocks = atomic_read(&flex_group[g].free_blocks);
+		stats->free_blocks = atomic_read(&flex_group[g].free_blocks); 
 		stats->used_dirs = atomic_read(&flex_group[g].used_dirs);
 		return;
 	}

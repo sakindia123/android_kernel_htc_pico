@@ -1,0 +1,38 @@
+From 9dd9149b192277e64305d83839517ad512291364 Mon Sep 17 00:00:00 2001
+From: Claude Oliver <oliver.claude@gmail.com>
+Date: Mon, 22 Oct 2012 20:26:42 +0200
+Subject: [PATCH] PATCH: applied linux kernel patch 3.0.47->48
+
+---
+ Makefile         | 2 +-
+ block/blk-core.c | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index 360b79f..e1468e6 100644
+--- a/Makefile
++++ b/Makefile
+@@ -1,6 +1,6 @@
+ VERSION = 3
+ PATCHLEVEL = 0
+-SUBLEVEL = 47
++SUBLEVEL = 48
+ EXTRAVERSION =
+ NAME = Sneaky Weasel
+ 
+diff --git a/block/blk-core.c b/block/blk-core.c
+index b4fb8ff..b65b420 100644
+--- a/block/blk-core.c
++++ b/block/blk-core.c
+@@ -524,7 +524,7 @@ struct request_queue *
+ 	q->request_fn		= rfn;
+ 	q->prep_rq_fn		= NULL;
+ 	q->unprep_rq_fn		= NULL;
+-	q->queue_flags		|= QUEUE_FLAG_DEFAULT;
++	q->queue_flags		= QUEUE_FLAG_DEFAULT;
+ 
+ 	/* Override internal queue lock with supplied lock pointer */
+ 	if (lock)
+-- 
+1.8.1.6
+

@@ -40,10 +40,12 @@ ENTRY(v7wbi_flush_user_tlb_range)
 	mov	r1, r1, lsr #PAGE_SHIFT
 #ifdef CONFIG_ARCH_MSM8X60
 	mov	r0, r0, lsl #PAGE_SHIFT
-#elseif CONFIG_ARM_ERRATA_720789
-	mov	r3, #0
 #else
 	asid	r3, r3				@ mask ASID
+#endif
+#ifdef CONFIG_ARM_ERRATA_720789
+	ALT_SMP(W(mov)	r3, #0	)
+	ALT_UP(W(nop)	
 #endif
 #ifndef CONFIG_ARCH_MSM8X60
 	orr	r0, r3, r0, lsl #PAGE_SHIFT	@ Create initial MVA

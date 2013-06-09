@@ -190,6 +190,11 @@
 #define ALT_UP_B(label) b label
 #endif
 
+	.macro	save_and_disable_irqs_notrace, oldcpsr
+	mrs	\oldcpsr, cpsr
+	disable_irq_notrace
+	.endm
+
 /*
  * SMP data memory barrier
  */

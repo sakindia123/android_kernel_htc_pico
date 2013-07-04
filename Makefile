@@ -1,6 +1,6 @@
 VERSION = 3
 PATCHLEVEL = 0
-SUBLEVEL = 16
+SUBLEVEL = 85
 EXTRAVERSION =
 NAME = Sneaky Weasel
 
@@ -195,7 +195,7 @@ SUBARCH := arm
 SUBARCH := arm
 export KBUILD_BUILDHOST := $(SUBARCH)
 ARCH		?= $(SUBARCH)
-CROSS_COMPILE	?= /home/sarthak/yo/arm-eabi-4.4.3/bin/arm-eabi-
+CROSS_COMPILE	?= /home/niharg/Android_Toolchains/arm-eabi-4.7/bin/arm-eabi-
 
 # Architecture as present in compile.h
 UTS_MACHINE 	:= $(ARCH)

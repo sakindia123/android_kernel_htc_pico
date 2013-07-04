@@ -1301,8 +1301,11 @@ struct atom_context *atom_parse(struct card_info *card, void *bios)
 
 int atom_asic_init(struct atom_context *ctx)
 {
+	struct radeon_device *rdev = ctx->card->dev->dev_private;
 	int hwi = CU16(ctx->data_table + ATOM_DATA_FWI_PTR);
 	uint32_t ps[16];
+	int ret;
+
 	memset(ps, 0, 64);
 
 	ps[0] = cpu_to_le32(CU32(hwi + ATOM_FWI_DEFSCLK_PTR));
@@ -1312,7 +1315,17 @@ int atom_asic_init(struct atom_context *ctx)
 
 	if (!CU16(ctx->cmd_table + 4 + 2 * ATOM_CMD_INIT))
 		return 1;
-	return atom_execute_table(ctx, ATOM_CMD_INIT, ps);
+	ret = atom_execute_table(ctx, ATOM_CMD_INIT, ps);
+	if (ret)
+		return ret;
+
+	memset(ps, 0, 64);
+
+	if (rdev->family < CHIP_R600) {
+		if (CU16(ctx->cmd_table + 4 + 2 * ATOM_CMD_SPDFANCNTL))
+			atom_execute_table(ctx, ATOM_CMD_SPDFANCNTL, ps);
+	}
+	return ret;
 }
 
 void atom_destroy(struct atom_context *ctx)
@@ -1371,10 +1384,10 @@ int atom_allocate_fb_scratch(struct atom_context *ctx)
 		firmware_usage = (struct _ATOM_VRAM_USAGE_BY_FIRMWARE *)(ctx->bios + data_offset);
 
 		DRM_DEBUG("atom firmware requested %08x %dkb\n",
-			  firmware_usage->asFirmwareVramReserveInfo[0].ulStartAddrUsedByFirmware,
-			  firmware_usage->asFirmwareVramReserveInfo[0].usFirmwareUseInKb);
+			  le32_to_cpu(firmware_usage->asFirmwareVramReserveInfo[0].ulStartAddrUsedByFirmware),
+			  le16_to_cpu(firmware_usage->asFirmwareVramReserveInfo[0].usFirmwareUseInKb));
 
-		usage_bytes = firmware_usage->asFirmwareVramReserveInfo[0].usFirmwareUseInKb * 1024;
+		usage_bytes = le16_to_cpu(firmware_usage->asFirmwareVramReserveInfo[0].usFirmwareUseInKb) * 1024;
 	}
 	ctx->scratch_size_bytes = 0;
 	if (usage_bytes == 0)

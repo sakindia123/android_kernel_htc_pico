@@ -29,9 +29,9 @@ struct timed_gpio_data {
 	struct timed_output_dev dev;
 	struct hrtimer timer;
 	spinlock_t lock;
-	unsigned 	gpio;
-	int 		max_timeout;
-	u8 		active_low;
+	unsigned gpio;
+	int max_timeout;
+	u8 active_low;
 };
 
 static enum hrtimer_restart gpio_timer_func(struct hrtimer *timer)
@@ -161,18 +161,7 @@ static struct platform_driver timed_gpio_driver = {
 	},
 };
 
-static int __init timed_gpio_init(void)
-{
-	return platform_driver_register(&timed_gpio_driver);
-}
-
-static void __exit timed_gpio_exit(void)
-{
-	platform_driver_unregister(&timed_gpio_driver);
-}
-
-module_init(timed_gpio_init);
-module_exit(timed_gpio_exit);
+module_platform_driver(timed_gpio_driver);
 
 MODULE_AUTHOR("Mike Lockwood <lockwood@android.com>");
 MODULE_DESCRIPTION("timed gpio driver");

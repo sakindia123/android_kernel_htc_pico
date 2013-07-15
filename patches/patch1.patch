@@ -1,0 +1,26 @@
+From 6f61ff8b1f7e18e43e8629f0df799eeba4bdc17e Mon Sep 17 00:00:00 2001
+From: sakindia123 <sa6915@gmail.com>
+Date: Tue, 18 Jun 2013 16:53:58 +0530
+Subject: [PATCH] nclude: linux: blkdev.h: increase max nr_requests to 
+512
+
+---
+ include/linux/blkdev.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
+index ef7729e..52d0deb 100644
+--- a/include/linux/blkdev.h
++++ b/include/linux/blkdev.h
+@@ -32,7 +32,7 @@
+ struct sg_io_hdr;
+ 
+ #define BLKDEV_MIN_RQ	4
+-#define BLKDEV_MAX_RQ	128	/* Default maximum */
++#define BLKDEV_MAX_RQ	512  /* Non-Default maximum (128) */
+ 
+ struct request;
+ typedef void (rq_end_io_fn)(struct request *, int);
+-- 
+1.8.1.6
+

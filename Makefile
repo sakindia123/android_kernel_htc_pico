@@ -1,6 +1,6 @@
 VERSION = 3
 PATCHLEVEL = 0
-SUBLEVEL = 86
+SUBLEVEL = 87
 EXTRAVERSION =
 NAME = Sneaky Weasel
 
@@ -195,7 +195,7 @@ SUBARCH := arm
 SUBARCH := arm
 export KBUILD_BUILDHOST := $(SUBARCH)
 ARCH		?= $(SUBARCH)
-CROSS_COMPILE	?= /home/niharg/Android_Toolchains/arm-eabi-4.4.3/bin/arm-eabi-
+CROSS_COMPILE	?= /media/Main_Storage/android_toolchains/arm-eabi-4.7-32bit-master/bin/arm-eabi-
 
 # Architecture as present in compile.h
 UTS_MACHINE 	:= $(ARCH)
@@ -390,7 +390,8 @@ KBUILD_CFLAGS   := -Wno-trigraphs \
                    -ftree-vectorize -funsafe-math-optimizations \
                    -fsched-spec-load -mvectorize-with-neon-quad \
                    -fmodulo-sched -fmodulo-sched-allow-regmoves \
-		   -fno-delete-null-pointer-checks
+		   -fno-delete-null-pointer-checks \
+                    $(ARM_FLAGS)
 
 KBUILD_AFLAGS_KERNEL :=
 KBUILD_CFLAGS_KERNEL :=

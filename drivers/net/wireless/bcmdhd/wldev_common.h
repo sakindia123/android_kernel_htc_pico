@@ -28,6 +28,15 @@
 
 #include <wlioctl.h>
 
+#define DEF_COUNTRY_CODE	"XX"
+
+//BRCM APSTA START
+typedef struct {
+        int cfg;
+        int val;
+} bss_setbuf_t;
+//BRCM APSTA END
+
 /* wl_dev_ioctl - get/set IOCTLs, will call net_device's do_ioctl (or
  *  netdev_ops->ndo_do_ioctl in new kernels)
  *  @dev: the net_device handle
@@ -40,14 +49,14 @@ s32 wldev_ioctl(
  */
 s32 wldev_iovar_getbuf(
 	struct net_device *dev, s8 *iovar_name,
-	void *param, s32 paramlen, void *buf, s32 buflen, struct mutex* buf_sync);
+	void *param, s32 paramlen, void *buf, s32 buflen, struct mutex *buf_sync);
 
 /** Set named IOVARs, this function calls wl_dev_ioctl with
  *  WLC_SET_VAR IOCTL code
  */
 s32 wldev_iovar_setbuf(
 	struct net_device *dev, s8 *iovar_name,
-	void *param, s32 paramlen, void *buf, s32 buflen, struct mutex* buf_sync);
+	void *param, s32 paramlen, void *buf, s32 buflen, struct mutex *buf_sync);
 
 s32 wldev_iovar_setint(
 	struct net_device *dev, s8 *iovar, s32 val);
@@ -68,14 +77,14 @@ s32 wldev_mkiovar_bsscfg(
  */
 s32 wldev_iovar_getbuf_bsscfg(
 	struct net_device *dev, s8 *iovar_name, void *param, s32 paramlen,
-	void *buf, s32 buflen, s32 bsscfg_idx, struct mutex* buf_sync);
+	void *buf, s32 buflen, s32 bsscfg_idx, struct mutex *buf_sync);
 
 /** Set named and bsscfg indexed IOVARs, this function calls wl_dev_ioctl with
  *  WLC_SET_VAR IOCTL code
  */
 s32 wldev_iovar_setbuf_bsscfg(
 	struct net_device *dev, s8 *iovar_name, void *param, s32 paramlen,
-	void *buf, s32 buflen, s32 bsscfg_idx, struct mutex* buf_sync);
+	void *buf, s32 buflen, s32 bsscfg_idx, struct mutex *buf_sync);
 
 s32 wldev_iovar_getint_bsscfg(
 	struct net_device *dev, s8 *iovar, s32 *pval, s32 bssidx);
@@ -106,5 +115,22 @@ int wldev_get_ssid(struct net_device *dev, wlc_ssid_t *pssid);
 int wldev_get_band(struct net_device *dev, uint *pband);
 
 int wldev_set_band(struct net_device *dev, uint band);
+
+#ifdef APSTA_CONCURRENT
+int wldev_set_pktfilter_enable(struct net_device *dev, int enable);
+int wldev_set_apsta_cfg(struct net_device *dev, char *param_str);
+int wldev_get_ap_status(struct net_device *dev);
+int wldev_set_apsta(struct net_device *dev, bool enable);
+void wldev_restart_ap(struct net_device *dev);
+//Hugh 2012-04-05 ++++
+int wldev_set_scansuppress(struct net_device *dev,int enable);
+//Hugh 2012-04-05 ----
+#endif
+
+//BRCM WPSAP START
+#ifdef BRCM_WPSAP
+int wldev_set_ap_sta_registra_wsec(struct net_device *dev, char *command, int total_len);
+#endif
+//BRCM WPSAP END
 
 #endif /* __WLDEV_COMMON_H__ */

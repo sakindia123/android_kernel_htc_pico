@@ -1,4 +1,4 @@
-Linux Kernel 3.0.86 for Htc Explorer (Pico)
+Linux Kernel 3.0.87 for Htc Explorer (Pico)
 
 WORKING
 =======
@@ -33,6 +33,6 @@ NOT WORKING
 - Nothing really
 
 
-Linux Kernel 3.0.16 patched to 3.0.86
+Linux Kernel 3.0.16 patched to 3.0.87
 
 Special Thanks to Sakindia123 for optimizations, Coolexe, temasek for upstream patches. 

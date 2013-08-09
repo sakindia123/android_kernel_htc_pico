@@ -56,7 +56,6 @@ static void bdev_inode_switch_bdi(struct inode *inode,
 {
   bool wakeup_bdi = false;
 
-   spin_lock(&inode_wb_list_lock);
    spin_lock(&inode->i_lock);
    inode->i_data.backing_dev_info = dst;
   if (inode->i_state & I_DIRTY) {
@@ -65,7 +64,6 @@ static void bdev_inode_switch_bdi(struct inode *inode,
      list_move(&inode->i_wb_list, &dst->wb.b_dirty);
   }
    spin_unlock(&inode->i_lock);
-   spin_unlock(&inode_wb_list_lock);
 
   if (wakeup_bdi)
     bdi_wakeup_thread_delayed(dst); 

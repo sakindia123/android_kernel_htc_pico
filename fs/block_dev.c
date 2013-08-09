@@ -54,34 +54,21 @@ EXPORT_SYMBOL(I_BDEV);
 static void bdev_inode_switch_bdi(struct inode *inode,
 			struct backing_dev_info *dst)
 {
-<<<<<<< HEAD
-	struct backing_dev_info *old = inode->i_data.backing_dev_info;
+  bool wakeup_bdi = false;
 
-	if (unlikely(dst == old))		/* deadlock avoidance */
-		return;
-	bdi_lock_two(&old->wb, &dst->wb);
-=======
-	bool wakeup_bdi = false;
+   spin_lock(&inode_wb_list_lock);
+   spin_lock(&inode->i_lock);
+   inode->i_data.backing_dev_info = dst;
+  if (inode->i_state & I_DIRTY) {
+    if (bdi_cap_writeback_dirty(dst) && !wb_has_dirty_io(&dst->wb))
+      wakeup_bdi = true;
+     list_move(&inode->i_wb_list, &dst->wb.b_dirty);
+  }
+   spin_unlock(&inode->i_lock);
+   spin_unlock(&inode_wb_list_lock);
 
-	spin_lock(&inode_wb_list_lock);
->>>>>>> 5aa9a79... Linux 3.0.88
-	spin_lock(&inode->i_lock);
-	inode->i_data.backing_dev_info = dst;
-	if (inode->i_state & I_DIRTY) {
-		if (bdi_cap_writeback_dirty(dst) && !wb_has_dirty_io(&dst->wb))
-			wakeup_bdi = true;
-		list_move(&inode->i_wb_list, &dst->wb.b_dirty);
-	}
-	spin_unlock(&inode->i_lock);
-<<<<<<< HEAD
-	spin_unlock(&old->wb.list_lock);
-	spin_unlock(&dst->wb.list_lock);
-=======
-	spin_unlock(&inode_wb_list_lock);
-
-	if (wakeup_bdi)
-		bdi_wakeup_thread_delayed(dst);
->>>>>>> 5aa9a79... Linux 3.0.88
+  if (wakeup_bdi)
+    bdi_wakeup_thread_delayed(dst); 
 }
 
 sector_t blkdev_max_block(struct block_device *bdev)

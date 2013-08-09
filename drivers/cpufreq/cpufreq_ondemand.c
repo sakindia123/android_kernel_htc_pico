@@ -844,15 +844,6 @@ static void dbs_input_event(struct input_handle *handle, unsigned int type,
 {
 	int i;
 
-#ifdef CONFIG_ZTE_PLATFORM
-	if(!((strstr(handle->dev->name, "touch"))	//touchscreen needs to increase cpufreq
-	#ifndef CONFIG_ZTE_NO_CPUFREQ_ONDEMAND_KEYBOARD	//LHX_PM_20110706_01 not change cpufreq while keyboard input
-		|| (strstr(handle->dev->name, "keypad"))	//keypad  needs to increase cpufreq
-	#endif
-		))
-		return;	//no need to increase cpufreq if input is not touchscreen or keypad
-#endif
-
 	if ((dbs_tuners_ins.powersave_bias == POWERSAVE_BIAS_MAXLEVEL) ||
 		(dbs_tuners_ins.powersave_bias == POWERSAVE_BIAS_MINLEVEL)) {
 		/* nothing to do */

@@ -28,7 +28,6 @@
 #include <linux/cpu.h>
 #include <linux/completion.h>
 #include <linux/mutex.h>
-#include <mach/perflock.h>
 #include <linux/syscore_ops.h>
 
 #include <trace/events/power.h>
@@ -390,9 +389,7 @@ static ssize_t store_##file_name					\
 	ret = sscanf(buf, "%u", &new_policy.object);			\
 	if (ret != 1)							\
 		return -EINVAL;						\
-	/* hack for cpufreq_ceiling feature \
-	 * TODO: move to nofifier */ \
-	perflock_##file_name(new_policy.object, policy->cpu);   \
+									\
 	ret = __cpufreq_set_policy(policy, &new_policy);		\
 	policy->user_policy.object = policy->object;			\
 									\
@@ -440,9 +437,9 @@ static ssize_t store_scaling_governor(struct cpufreq_policy *policy,
 	unsigned int ret = -EINVAL;
 	char	str_governor[16];
 	struct cpufreq_policy new_policy;
-	char *envp[3];
-	char buf1[64];
-	char buf2[64];
+        char *envp[3];
+        char buf1[64];
+        char buf2[64];
 
 	ret = cpufreq_get_policy(&new_policy, policy->cpu);
 	if (ret)
@@ -463,12 +460,12 @@ static ssize_t store_scaling_governor(struct cpufreq_policy *policy,
 	policy->user_policy.policy = policy->policy;
 	policy->user_policy.governor = policy->governor;
 
-	snprintf(buf1, sizeof(buf1), "GOV=%s", policy->governor->name);
-	snprintf(buf2, sizeof(buf2), "CPU=%u", policy->cpu);
-	envp[0] = buf1;
-	envp[1] = buf2;
-	envp[2] = NULL;
-	kobject_uevent_env(cpufreq_global_kobject, KOBJ_ADD, envp);
+        snprintf(buf1, sizeof(buf1), "GOV=%s", policy->governor->name);
+        snprintf(buf2, sizeof(buf2), "CPU=%u", policy->cpu);
+        envp[0] = buf1;
+        envp[1] = buf2;
+        envp[2] = NULL;
+        kobject_uevent_env(cpufreq_global_kobject, KOBJ_ADD, envp);
 
 	if (ret)
 		return ret;
@@ -1650,12 +1647,12 @@ static int __cpufreq_set_policy(struct cpufreq_policy *data,
 
 	memcpy(&policy->cpuinfo, &data->cpuinfo,
 				sizeof(struct cpufreq_cpuinfo));
-#ifndef CONFIG_PERFLOCK
+
 	if (policy->min > data->max || policy->max < data->min) {
 		ret = -EINVAL;
 		goto error_out;
 	}
-#endif
+
 	/* verify the cpu speed can be set within this limit */
 	ret = cpufreq_driver->verify(policy);
 	if (ret)

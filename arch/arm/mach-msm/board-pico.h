@@ -37,7 +37,7 @@ int __init pico_wifi_init(void);
 #define MSM_RAM_CONSOLE_BASE    0x2FD00000
 #define MSM_RAM_CONSOLE_SIZE    MSM_HTC_RAM_CONSOLE_SIZE
 
-#define MSM_PMEM_MDP_SIZE       0x01400000
+#define MSM_PMEM_MDP_SIZE       0x1400000
 #define MSM_PMEM_ADSP_SIZE      0x00D00000
 
 #define PICO_GPIO_TO_INT(x)           (x+64) /* from gpio_to_irq */

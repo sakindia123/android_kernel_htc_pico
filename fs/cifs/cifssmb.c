@@ -5353,7 +5353,8 @@ CIFSSMBSetFileDisposition(const int xid, struct cifs_tcon *tcon,
 	param_offset = offsetof(struct smb_com_transaction2_sfi_req, Fid) - 4;
 	offset = param_offset + params;
 
-	data_offset = (char *) (&pSMB->hdr.Protocol) + offset;
+	data_offset = (char *)pSMB +
+			offsetof(struct smb_hdr, Protocol) + offset;
 
 	count = 1;
 	pSMB->MaxParameterCount = cpu_to_le16(2);
@@ -5680,7 +5681,7 @@ setPermsRetry:
 	pSMB->Reserved4 = 0;
 	inc_rfc1001_len(pSMB, byte_count);
 
-	cifs_fill_unix_set_info(data_offset, args);
+	cifs_fill_unix_set_info((FILE_UNIX_BASIC_INFO *)data_offset, args);
 
 	pSMB->ByteCount = cpu_to_le16(byte_count);
 	rc = SendReceive(xid, tcon->ses, (struct smb_hdr *) pSMB,

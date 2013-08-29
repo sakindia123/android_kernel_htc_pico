@@ -83,7 +83,7 @@ enum {
 
 void __init msm_add_usb_devices(void (*phy_reset) (void));
 void __init msm_add_mem_devices(struct msm_pmem_setting *setting);
-void __init msm_init_pmic_vibrator(int);
+void __init msm_init_pmic_vibrator(void);
 
 struct mmc_platform_data;
 int __init msm_add_sdcc_devices(unsigned int controller, struct mmc_platform_data *plat);

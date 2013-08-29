@@ -46,9 +46,9 @@ int __init pico_wifi_init(void);
 #define PICO_POWER_KEY                (20)
 #define PICO_GPIO_PS_HOLD         (25)
 #define PICO_GPIO_WIFI_IRQ            (29)
-////#define PICO_GPIO_RESET_BTN_N         (36)
+//#define PICO_GPIO_RESET_BTN_N         (36)
 #define PICO_GPIO_SDMC_CD_N           (38)
-//#define PICO_GPIO_UP_INT_N            (39)
+#define PICO_GPIO_UP_INT_N            (39)
 #define PICO_GPIO_CHG_INT		(40)
 #define PICO_GPIO_VOL_DOWN_XB         (48)
 #define PICO_GPIO_VOL_DOWN            (49)
@@ -90,12 +90,9 @@ int __init pico_wifi_init(void);
 #define PICO_GPIO_AUD_PCM_SYNC        (70)
 #define PICO_GPIO_AUD_PCM_CLK         (71)
 
-//#define PICO_GPIO_UP_RESET_N          (76)
-//#define PICO_GPIO_FLASHLIGHT          (85)
 #define PICO_GPIO_UART3_RX            (86)
 #define PICO_GPIO_UART3_TX            (87)
 #define PICO_GPIO_VOL_UP              (92)
-//#define PICO_GPIO_LS_EN               (93)
 #define PICO_GPIO_WIFI_SHUTDOWN_N       (108)
 //#define PICO_GPIO_V_USBPHY_3V3_EN     (109)
 //#define PICO_GPIO_VIBRATOR_ON         (116)
@@ -120,7 +117,11 @@ int __init pico_wifi_init(void);
 #define PICO_GPIO_BT_RESET_N          (90)
 #define PICO_GPIO_BT_HOST_WAKE        (112)
 #define PICO_GPIO_BT_CHIP_WAKE        (122)
-#define PICO_GPIO_BT_SD_N             (123)
+#define PICO_GPIO_BT_SHUTDOWN_N        (123)
+#define PICO_GPIO_BT_PCM_OUT           (127)
+#define PICO_GPIO_BT_PCM_IN            (128)
+#define PICO_GPIO_BT_PCM_SYNC          (129)
+#define PICO_GPIO_BT_PCM_CLK           (130)
 
 /* Touch Panel */
 #define PICO_GPIO_TP_ATT_N            (18)
@@ -143,6 +144,11 @@ int __init pico_wifi_init(void);
 #define PICO_GPIO_LCD_RST_N           (118)
 #define PICO_GPIO_LCM_1v8_EN             (5)
 #define PICO_GPIO_LCM_2v85_EN             (6)
+
+/* NFC */
+#define PICO_GPIO_NFC_VEN	(8)
+#define PICO_GPIO_NFC_INT		(27)
+#define PICO_GPIO_NFC_DL	(7)
 
 #endif /* GUARD */
 

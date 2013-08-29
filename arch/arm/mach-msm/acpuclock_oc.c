@@ -363,9 +363,12 @@ static struct clkctl_acpu_speed pll0_960_pll1_245_pll2_1200_pll4_800_25a[] = {
 	{ 1, 245760, ACPU_PLL_1, 1, 0, 30720, 3, 3,  61440 },
 	{ 0, 300000, ACPU_PLL_2, 2, 3, 37500, 3, 4, 150000 },
 	{ 1, 320000, ACPU_PLL_0, 4, 2, 40000, 3, 4, 122880 },
-	{ 0, 400000, ACPU_PLL_2, 2, 2, 50000, 3, 4, 122880 },
+	{ 0, 400000, ACPU_PLL_4, 6, 1, 50000, 3, 4, 122880 },
 	{ 1, 480000, ACPU_PLL_0, 4, 1, 60000, 3, 5, 122880 },
 	{ 1, 600000, ACPU_PLL_2, 2, 1, 75000, 3, 6, 200000 },
+	{ 1, 737000, ACPU_PLL_2, 2, 1, 85000, 3, 6, 200000 },
+	{ 1, 800000, ACPU_PLL_2, 2, 1, 100000, 3, 7, 200000 }, /* Add overclock frequencies to this frequency table */
+	{ 1, 940800, ACPU_PLL_2, 2, 1, 117600, 3, 7, 200000 },
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, {0, 0, 0, 0}, {0, 0, 0, 0} }
 };
 
@@ -449,7 +452,7 @@ static struct clkctl_acpu_speed pll0_960_pll1_737_pll2_1200_pll4_800_25a[] = {
 	{ 1, 245760, ACPU_PLL_1, 1, 2, 30720, 3, 3,  61440 },
 	{ 0, 300000, ACPU_PLL_2, 2, 3, 37500, 3, 4, 150000 },
 	{ 1, 320000, ACPU_PLL_0, 4, 2, 40000, 3, 4, 122880 },
-	{ 0, 400000, ACPU_PLL_2, 2, 2, 50000, 3, 4, 122880 },
+	{ 0, 400000, ACPU_PLL_4, 6, 1, 50000, 3, 4, 122880 },
 	{ 1, 480000, ACPU_PLL_0, 4, 1, 60000, 3, 5, 122880 },
 	{ 1, 600000, ACPU_PLL_2, 2, 1, 75000, 3, 6, 200000 },
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, {0, 0, 0, 0}, {0, 0, 0, 0} }
@@ -467,6 +470,11 @@ static struct clkctl_acpu_speed pll0_960_pll1_737_pll2_1200_pll4_800_25a[] = {
 #define PLL_1008_MHZ	52
 #define PLL_1056_MHZ	55
 #define PLL_1200_MHZ	62
+
+/* Specify parameters for overclock */
+#define MAXNUM_FREQ 3
+unsigned long OVERCLOCK_FREQ[MAXNUM_FREQ] = {737000, 800000, 940800};
+unsigned int OVERCLOCK_MULTIPLIER[MAXNUM_FREQ] = {79, 83, 85};
 
 #define PLL_CONFIG(m0, m1, m2, m4) { \
 	PLL_##m0##_MHZ, PLL_##m1##_MHZ, PLL_##m2##_MHZ, PLL_##m4##_MHZ, \
@@ -637,6 +645,7 @@ static int acpuclk_set_vdd_level(int vdd)
 static void acpuclk_set_div(const struct clkctl_acpu_speed *hunt_s)
 {
 	uint32_t reg_clkctl, reg_clksel, clk_div, src_sel;
+	int i;
 
 	reg_clksel = readl_relaxed(A11S_CLK_SEL_ADDR);
 
@@ -644,6 +653,16 @@ static void acpuclk_set_div(const struct clkctl_acpu_speed *hunt_s)
 	clk_div = (reg_clksel >> 1) & 0x03;
 	/* CLK_SEL_SRC1NO */
 	src_sel = reg_clksel & 1;
+
+	/* Perform overclocking if requested */
+	for(i = 0; i < MAXNUM_FREQ; i++)
+	{
+        	if(hunt_s->a11clk_khz == OVERCLOCK_FREQ[i]) {
+                	writel(OVERCLOCK_MULTIPLIER[i], PLLn_L_VAL(2)); /* This is where real over clock happens. Here we change the speed of PLL2 with new multiplier. */
+                	udelay(50);
+			break;
+        	}
+	}
 
 	/*
 	 * If the new clock divider is higher than the previous, then
@@ -665,6 +684,12 @@ static void acpuclk_set_div(const struct clkctl_acpu_speed *hunt_s)
 	/* Program clock source selection */
 	reg_clksel ^= 1;
 	writel_relaxed(reg_clksel, A11S_CLK_SEL_ADDR);
+
+	/* Restore from overclocking */
+	if(hunt_s->a11clk_khz <= 600000) {
+                writel(PLL_1200_MHZ, PLLn_L_VAL(2)); /* This is for restoring original speed of PLL2 when we are not over clocking. */
+                udelay(50);
+        }
 
 	/*
 	 * If the new clock divider is lower than the previous, then
@@ -1016,11 +1041,6 @@ static void __init acpu_freq_tbl_fixup(void)
 		}
 	}
 
-	if (acpu_freq_tbl == NULL) {
-		pr_crit("Unknown PLL configuration!\n");
-		BUG();
-	}
-
 	/* Fix up PLL0 source divider if necessary. Also, fix up the AXI to
 	 * the max that's supported by the board (RAM used in board).
 	 */
@@ -1307,3 +1327,4 @@ struct acpuclk_soc_data acpuclk_7x27aa_soc_data __initdata = {
 	.max_axi_khz = 200000,
 	.init = acpuclk_7201_init,
 };
+

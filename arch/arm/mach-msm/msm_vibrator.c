@@ -13,7 +13,11 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
+ *when           who    why   what
  */
+
+#define DEBUG  0
+
 #include <linux/kernel.h>
 #include <linux/platform_device.h>
 #include <linux/err.h>
@@ -21,33 +25,252 @@
 #include <linux/sched.h>
 #include "pmic.h"
 #include "timed_output.h"
-#include <linux/debug_by_vibrator.h>
-#include <linux/wakelock.h>
+
 #include <mach/msm_rpcrouter.h>
-#define VIB_INFO_LOG(fmt, ...) \
-		printk(KERN_INFO "[VIB]" fmt, ##__VA_ARGS__)
-#define VIB_ERR_LOG(fmt, ...) \
-		printk(KERN_ERR "[VIB][ERR]" fmt, ##__VA_ARGS__)
 
-#define PM_LIBPROG      0x30000061
+#ifdef CONFIG_MSM_RPC_VIBRATOR
+#define PM_LIBPROG	0x30000061
 #ifdef  CONFIG_RPC_VER_60001
-#define PM_LIBVERS	0x60001
+#define PM_LIBVERS	0x00060001
 #else
-#define PM_LIBVERS	0x30001
+#define PM_LIBVERS	0x00030001
 #endif
-#define VIB_MAX_LEVEL_mV	3100
-#define VIB_MIN_LEVEL_mV	1200
-#define PMIC_VIBRATOR_LEVEL (3000)
 #define HTC_PROCEDURE_SET_VIB_ON_OFF	22
-static struct work_struct vibrator_work;
-static int vibe_state;
-static spinlock_t vibe_lock;
+#define VIB_OFF_DELAY  50  //ms
+
+#define PMIC_VIBRATOR_LEVEL	(3000)
+
+#if DEBUG
+#define debug_print(x...) do {pr_info(x); } while (0)
+#else
+#define debug_print(x...) do {} while (0)
+#endif
+
+static struct work_struct work_vibrator_on;
+static struct work_struct work_vibrator_off;
 static struct hrtimer vibe_timer;
-static int pmic_vibrator_level;
-struct wake_lock vib_wake_lock;
 
+static volatile int g_vibrator_status=0;  //represent the vibrator's real on off status; 1:on  0:off
+#if DEBUG
+struct timespec volatile g_ts_start;
+struct timespec volatile g_ts_end;
+#endif
+static int vibrator_on_delay;
 
-#ifdef CONFIG_RPC_VIBRATOR
+static void set_pmic_vibrator(int on)
+{
+	static struct msm_rpc_endpoint *vib_endpoint;
+	struct set_vib_on_off_req
+	{
+		struct rpc_request_hdr hdr;
+		uint32_t data;
+	}
+	req;
+
+	if (!vib_endpoint)
+	{
+		vib_endpoint = msm_rpc_connect(PM_LIBPROG, PM_LIBVERS, 0);
+		if (IS_ERR(vib_endpoint))
+		{
+			printk(KERN_ERR "init vib rpc failed!\n");
+			vib_endpoint = 0;
+			return;
+		}
+	}
+
+	if (on)
+		req.data = cpu_to_be32(PMIC_VIBRATOR_LEVEL);
+	else
+		req.data = cpu_to_be32(0);
+
+	msm_rpc_call(vib_endpoint, HTC_PROCEDURE_SET_VIB_ON_OFF, &req,
+			sizeof(req), 5 * HZ);
+
+	if(on)
+	{
+		g_vibrator_status=1;
+#if DEBUG
+		g_ts_start = current_kernel_time();
+#endif
+	}
+	else
+	{
+		if(g_vibrator_status==1)
+		{
+			g_vibrator_status=0;
+#if DEBUG
+			g_ts_end = current_kernel_time();
+			pr_info("vibrator vibrated %ld ms.\n",
+					(g_ts_end.tv_sec-g_ts_start.tv_sec)*1000+g_ts_end.tv_nsec/1000000-g_ts_start.tv_nsec/1000000 );
+#endif
+		}
+	}
+}
+
+static void pmic_vibrator_on(struct work_struct *work)
+{
+	if( g_vibrator_status==0)  //if vibrator is on now
+	{
+		debug_print("Q:pmic_vibrator_on,start");
+		set_pmic_vibrator(1);
+		debug_print("Q:pmic_vibrator_on,done\n");
+	}
+	else
+	{
+		debug_print("Q:pmic_vibrator_on, already on, do nothing.\n");
+	}
+		vibrator_on_delay = (vibrator_on_delay > 15000 ? 15000 : vibrator_on_delay);  //moved from enable fun & modified chenchongbao.20111218
+		hrtimer_start(&vibe_timer,
+				ktime_set(vibrator_on_delay / 1000, (vibrator_on_delay % 1000 ) * 1000000),
+				HRTIMER_MODE_REL);
+}
+
+static void pmic_vibrator_off(struct work_struct *work)
+{
+	if( g_vibrator_status==1)  //if vibrator is on now
+	{
+		debug_print("Q:pmic_vibrator_off,start");
+		set_pmic_vibrator(0);
+		debug_print("Q:pmic_vibrator_off,done\n");
+	}
+	else
+	{
+		debug_print("Q:pmic_vibrator_off, already off, do nothing.\n");
+	}
+}
+
+static int timed_vibrator_on(struct timed_output_dev *sdev)
+{
+	if(!schedule_work(&work_vibrator_on))
+	{
+		pr_info("vibrator schedule on work failed !\n");
+		return 0;
+	}
+	return 1;
+}
+
+static int timed_vibrator_off(struct timed_output_dev *sdev)
+{
+	if(!schedule_work(&work_vibrator_off))
+	{
+		pr_info("vibrator schedule off work failed !\n");
+		return 0;
+	}
+	return 1;
+}
+
+static void vibrator_enable(struct timed_output_dev *dev, int value)
+{
+	hrtimer_cancel(&vibe_timer);
+	cancel_work_sync(&work_vibrator_on);
+	cancel_work_sync(&work_vibrator_off);
+
+	pr_info("vibrator_enable,%d ms,vibrator:%s now.\n",value,g_vibrator_status?"on":"off");
+
+	if (value == 0)
+	{
+		if(!timed_vibrator_off(dev))  //if queue failed, delay 10ms try again by timer
+		{
+			pr_info("vibrator_enable, queue failed!\n");
+			value=10;
+			hrtimer_start(&vibe_timer,
+					ktime_set(value / 1000, (value % 1000) * 1000000),
+					HRTIMER_MODE_REL);
+			value=0;
+		}
+	}
+	else
+	{
+		vibrator_on_delay = value;
+		timed_vibrator_on(dev);
+	}
+}
+
+static int vibrator_get_time(struct timed_output_dev *dev)
+{
+	if (hrtimer_active(&vibe_timer))
+	{
+		ktime_t r = hrtimer_get_remaining(&vibe_timer);
+		struct timeval t = ktime_to_timeval(r);
+		return t.tv_sec * 1000 + t.tv_usec / 1000;
+	}
+	else
+		return 0;
+}
+
+static enum hrtimer_restart vibrator_timer_func(struct hrtimer *timer)
+{
+	int value=0;
+	debug_print("timer:vibrator timeout!\n");
+	if(!timed_vibrator_off(NULL))
+	{
+		pr_info("timer:vibrator timeout queue failed!\n");
+		value=500;
+		hrtimer_start(&vibe_timer,
+				ktime_set(value / 1000, (value % 1000) * 1000000),
+				HRTIMER_MODE_REL);
+		value=0;
+	}
+	return HRTIMER_NORESTART;
+}
+
+static struct timed_output_dev pmic_vibrator =
+{
+	.name = "vibrator",
+	.get_time = vibrator_get_time,
+	.enable = vibrator_enable,
+};
+
+void __init msm_init_pmic_vibrator(void)
+{
+	pr_info("msm_init_pmic_vibrator\n");
+	INIT_WORK(&work_vibrator_on, pmic_vibrator_on);
+	INIT_WORK(&work_vibrator_off, pmic_vibrator_off);
+
+	hrtimer_init(&vibe_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	vibe_timer.function = vibrator_timer_func;
+
+	timed_output_dev_register(&pmic_vibrator);
+}
+
+MODULE_DESCRIPTION("timed output pmic vibrator device");
+MODULE_LICENSE("GPL");
+
+#else
+#define PM_LIBPROG      0x30000061
+#if (CONFIG_MSM_AMSS_VERSION == 6220) || (CONFIG_MSM_AMSS_VERSION == 6225)
+#define PM_LIBVERS      0xfb837d0b
+#else
+#define PM_LIBVERS      0x10001
+#endif
+
+#define HTC_PROCEDURE_SET_VIB_ON_OFF	21
+#define PMIC_VIBRATOR_LEVEL	(3000)
+
+static struct work_struct work_vibrator_on;
+static struct work_struct work_vibrator_off;
+static struct hrtimer vibe_timer;
+
+#ifdef CONFIG_PM8XXX_RPC_VIBRATOR
+static void set_pmic_vibrator(int on)
+{
+	int rc;
+
+	rc = pmic_vib_mot_set_mode(PM_VIB_MOT_MODE__MANUAL);
+	if (rc) {
+		pr_err("%s: Vibrator set mode failed", __func__);
+		return;
+	}
+
+	if (on)
+		rc = pmic_vib_mot_set_volt(PMIC_VIBRATOR_LEVEL);
+	else
+		rc = pmic_vib_mot_set_volt(0);
+
+	if (rc)
+		pr_err("%s: Vibrator set voltage level failed", __func__);
+}
+#else
 static void set_pmic_vibrator(int on)
 {
 	static struct msm_rpc_endpoint *vib_endpoint;
@@ -55,117 +278,62 @@ static void set_pmic_vibrator(int on)
 		struct rpc_request_hdr hdr;
 		uint32_t data;
 	} req;
-	int rc;
-
 
 	if (!vib_endpoint) {
-#ifdef CONFIG_ARCH_MSM7X30
-		vib_endpoint = msm_rpc_connect_compatible(PM_LIBPROG, PM_LIBVERS, 0);
-#else
 		vib_endpoint = msm_rpc_connect(PM_LIBPROG, PM_LIBVERS, 0);
-#endif
 		if (IS_ERR(vib_endpoint)) {
-			VIB_ERR_LOG("init vib rpc failed!\n");
+			printk(KERN_ERR "init vib rpc failed!\n");
 			vib_endpoint = 0;
 			return;
 		}
 	}
+
+
 	if (on)
-		req.data = cpu_to_be32(pmic_vibrator_level);
+		req.data = cpu_to_be32(PMIC_VIBRATOR_LEVEL);
 	else
 		req.data = cpu_to_be32(0);
-	rc = msm_rpc_call(vib_endpoint, HTC_PROCEDURE_SET_VIB_ON_OFF, &req,
+
+	msm_rpc_call(vib_endpoint, HTC_PROCEDURE_SET_VIB_ON_OFF, &req,
 		sizeof(req), 5 * HZ);
-
-	if (rc < 0)
-		VIB_ERR_LOG("msm_rpc_call failed (%d)!\n", rc);
-	else if (on)
-		pr_info("[ATS][set_vibration][successful]\n");
-
-}
-#else
-static void set_pmic_vibrator_on(void)
-{
-	int rc;
-	uint32_t data1, data2;
-	VIB_INFO_LOG("%s: + \n", __func__);
-	data1 = 0x1;
-	data2 = 0x0;
-	rc = msm_proc_comm(PCOM_CUSTOMER_CMD1, &data1, &data2);
-	if (rc)
-		VIB_ERR_LOG("%s: data1 0x%x, rc=%d\n", __func__, data1, rc);
-	VIB_INFO_LOG("%s: - \n", __func__);
-}
-static void set_pmic_vibrator_off(void){
-	int rc;
-	uint32_t data1, data2;
-	VIB_INFO_LOG("%s: + \n", __func__);
-	data1 = 0x0;
-	data2 = 0x0;
-	rc = msm_proc_comm(PCOM_CUSTOMER_CMD1, &data1, &data2);
-	if (rc)
-		VIB_ERR_LOG("%s: data1 0x%x, rc=%d\n", __func__, data1, rc);
-	VIB_INFO_LOG("%s: - \n", __func__);
 }
 #endif
 
-static void update_vibrator(struct work_struct *work)
+static void pmic_vibrator_on(struct work_struct *work)
 {
-#ifdef CONFIG_RPC_VIBRATOR
-	set_pmic_vibrator(vibe_state);
-#endif
+	set_pmic_vibrator(1);
 }
 
+static void pmic_vibrator_off(struct work_struct *work)
+{
+	set_pmic_vibrator(0);
+}
+
+static void timed_vibrator_on(struct timed_output_dev *sdev)
+{
+	schedule_work(&work_vibrator_on);
+}
+
+static void timed_vibrator_off(struct timed_output_dev *sdev)
+{
+	schedule_work(&work_vibrator_off);
+}
 
 static void vibrator_enable(struct timed_output_dev *dev, int value)
 {
-#ifdef CONFIG_RPC_VIBRATOR
-	unsigned long	flags;
-
-retry:
-	spin_lock_irqsave(&vibe_lock, flags);
-	if (hrtimer_try_to_cancel(&vibe_timer) < 0) {
-		spin_unlock_irqrestore(&vibe_lock, flags);
-		cpu_relax();
-		goto retry;
-	}
-
-	VIB_INFO_LOG("vibrator_enable, %s(parent:%s): vibrates %d msec\n",
-				current->comm, current->parent->comm, value);
+	hrtimer_cancel(&vibe_timer);
 
 	if (value == 0)
-		vibe_state = 0;
+		timed_vibrator_off(dev);
 	else {
 		value = (value > 15000 ? 15000 : value);
-		vibe_state = 1;
+
+		timed_vibrator_on(dev);
+
 		hrtimer_start(&vibe_timer,
 			      ktime_set(value / 1000, (value % 1000) * 1000000),
 			      HRTIMER_MODE_REL);
 	}
-	spin_unlock_irqrestore(&vibe_lock, flags);
-	schedule_work(&vibrator_work);
-#else
-	if (value != 0);
-retry:
-	if (hrtimer_try_to_cancel(&vibe_timer) < 0) {
-		cpu_relax();
-		goto retry;
-	}
-
-	VIB_INFO_LOG("vibrator_enable, %s(parent:%s): vibrates %d msec\n",
-				current->comm, current->parent->comm, value);
-
-	if (value == 0)
-		set_pmic_vibrator_off();
-	else {
-		value = (value > 15000 ? 15000 : value);
-		set_pmic_vibrator_on();
-		wake_lock_timeout(&vib_wake_lock, HZ * value / 1000);
-		hrtimer_start(&vibe_timer,
-			      ktime_set(value / 1000, (value % 1000) * 1000000),
-			      HRTIMER_MODE_REL);
-	}
-#endif
 }
 
 static int vibrator_get_time(struct timed_output_dev *dev)
@@ -180,13 +348,7 @@ static int vibrator_get_time(struct timed_output_dev *dev)
 
 static enum hrtimer_restart vibrator_timer_func(struct hrtimer *timer)
 {
-	VIB_INFO_LOG("%s\n", __func__);
-#ifdef CONFIG_RPC_VIBRATOR
-	vibe_state = 0;
-	schedule_work(&vibrator_work);
-#else
-	set_pmic_vibrator_off();
-#endif
+	timed_vibrator_off(NULL);
 	return HRTIMER_NORESTART;
 }
 
@@ -196,167 +358,18 @@ static struct timed_output_dev pmic_vibrator = {
 	.enable = vibrator_enable,
 };
 
-#if defined(CONFIG_DEBUG_BY_VIBRATOR)	 //HTC_CSP_START
-#define DEBUG_VIBRATOR_TIME	(3000)
-/**
-* debug_by_vibrator -debug interface.
-* @mode: debug mode.
-*	ERR_MODE mode: Common error,vibrate 3 seconds, with the log: [VIB]: Kernel ERROR!!Root cause module is XXX.
-*	CRASH_MODE mode: Crash mode or fatal error, be careful to use!vibrate always, with the log: [VIB]:FATAL ERROR!!Root cause is XXX.
-*@name: the device name to use and to print in log.
-*
-* Using the interface, below steps shouled be followed.
-*	1. Include the file: #include<linux/debug_by_vibrator.h>
-*	2. Call the interface: debug_by_vibrator(mode,your_module_name);
-*	3. Return values: when 0,function called correctly; when -1,mode number error.
-*/
-int debug_by_vibrator(int mode, const char *name)
+void __init msm_init_pmic_vibrator(void)
 {
-	int ret = 0;
-	unsigned long flags;
+	INIT_WORK(&work_vibrator_on, pmic_vibrator_on);
+	INIT_WORK(&work_vibrator_off, pmic_vibrator_off);
 
-	VIB_INFO_LOG("debug_by_vibrator used by %s, %s(parent:%s): vibrates in mode %d\n", name,
-			current->comm, current->parent->comm, mode);
-
-	if(mode == DISABLE){
-		hrtimer_cancel(&vibe_timer);
-		spin_lock_irqsave(&vibe_lock, flags);
-		vibe_state = 0;
-		spin_unlock_irqrestore(&vibe_lock, flags);
-		schedule_work(&vibrator_work);
-		ret = 1;
-	}else if(mode == ERR_MODE){
-		hrtimer_cancel(&vibe_timer);
-		spin_lock_irqsave(&vibe_lock, flags);
-		vibe_state = 1;
-		hrtimer_start(&vibe_timer,
-			      ktime_set(DEBUG_VIBRATOR_TIME / 1000, 0),
-			      HRTIMER_MODE_REL);
-		spin_unlock_irqrestore(&vibe_lock, flags);
-		schedule_work(&vibrator_work);
-		VIB_INFO_LOG(": Kernel ERROR!!Root cause module is %s \n\n",name);
-		ret = 0;
-	}
-	else if(mode== CRASH_MODE){
-		hrtimer_cancel(&vibe_timer);
-		spin_lock_irqsave(&vibe_lock, flags);
-		vibe_state = 1;
-		spin_unlock_irqrestore(&vibe_lock, flags);
-		schedule_work(&vibrator_work);
-		VIB_INFO_LOG(": FATAL ERROR!!Root cause module is %s \n\n",name);
-		ret = 0;
-	}
-	else{
-		VIB_INFO_LOG(": Using a incrrect mode in DEBUG_BY_VIBRATOR interface!\n");
-		ret = -1;
-	}
-
-	return ret;
-}
-EXPORT_SYMBOL_GPL(debug_by_vibrator);
-
-int get_vibrator_enabled(void)
-{
-	return vibe_state;
-}
-EXPORT_SYMBOL_GPL(get_vibrator_enabled);
-#endif	//HTC_CSP_END
-
-#if defined(CONFIG_DEBUG_BY_VIBRATOR)	//HTC_CSP_START
-static ssize_t debug_by_vibrator_store(
-		struct device *dev, struct device_attribute *attr,
-		const char *buf, size_t size)
-{
-	int mode = 0;
-	char name[0];
-
-	sscanf(buf,"%d %s",&mode,name);
-
-	switch (mode){
-	case 0:
-		debug_by_vibrator(DISABLE,name);
-		break;
-	case 1:
-		debug_by_vibrator(ERR_MODE,name);
-		break;
-	case 2:
-		debug_by_vibrator(CRASH_MODE,name);
-		break;
-	default:
-		printk(KERN_DEBUG"[VIB] Wrong useage!\n");
-		return -EINVAL;
-	}
-	printk(KERN_DEBUG"[VIB]Calling the interface debug_by_vibrator \n");
-
-	return size;
-}
-
-static ssize_t debug_by_vibrator_show(struct device *dev,
-				struct device_attribute *attr, char *buf)
-{
-	int vib_enabled = 0;
-	int ret = 0;
-	vib_enabled = get_vibrator_enabled();
-
-	ret = sprintf(buf,"%d",vib_enabled);
-	return ret;
-}
-
-static DEVICE_ATTR(debug_by_vibrator, S_IRUGO | S_IWUSR, debug_by_vibrator_show, debug_by_vibrator_store);
-#endif	//HTC_CSP_END
-
-static ssize_t voltage_level_show(struct device *dev, struct device_attribute *attr,
-		char *buf)
-{
-	return sprintf(buf, "%d\n", pmic_vibrator_level);
-}
-
-static ssize_t voltage_level_store(
-		struct device *dev, struct device_attribute *attr,
-		const char *buf, size_t size)
-{
-	int value;
-
-	if (sscanf(buf, "%d", &value) != 1)
-		return -EINVAL;
-
-	if (value < VIB_MIN_LEVEL_mV || value > VIB_MAX_LEVEL_mV)
-		value = VIB_MAX_LEVEL_mV;
-	pmic_vibrator_level = value ;
-	return size;
-}
-
-static DEVICE_ATTR(voltage_level, S_IRUGO | S_IWUSR, voltage_level_show, voltage_level_store);
-
-void __init msm_init_pmic_vibrator(int level)
-{
-	int rc;
-	INIT_WORK(&vibrator_work, update_vibrator);
-	spin_lock_init(&vibe_lock);
-	vibe_state = 0;
-	wake_lock_init(&vib_wake_lock, WAKE_LOCK_IDLE, "vib");
 	hrtimer_init(&vibe_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	vibe_timer.function = vibrator_timer_func;
-	pmic_vibrator_level = level;
-	timed_output_dev_register(&pmic_vibrator);
-	rc = device_create_file(pmic_vibrator.dev, &dev_attr_voltage_level);
-	if (rc < 0)
-		VIB_ERR_LOG("%s, create voltage_level fail\n", __func__);
-#if defined(CONFIG_DEBUG_BY_VIBRATOR)	//HTC_CSP_START
 
-	rc = device_create_file(pmic_vibrator.dev, &dev_attr_debug_by_vibrator);
-	if (rc < 0) {
-		VIB_ERR_LOG("%s, create debug sysfs fail\n", __func__);
-/*		goto err_create_debug_flag; */
-	}
-#endif	//HTC_CSP_END
-	VIB_INFO_LOG("%s, init pmic vibrator!",__func__);
-	return;
-/*err_create_debug_flag:
-	device_remove_attrs(pmic_vibrator.dev);*/
+	timed_output_dev_register(&pmic_vibrator);
 }
 
 MODULE_DESCRIPTION("timed output pmic vibrator device");
 MODULE_LICENSE("GPL");
-
+#endif
 

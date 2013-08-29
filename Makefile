@@ -1,6 +1,6 @@
 VERSION = 3
 PATCHLEVEL = 0
-SUBLEVEL = 89
+SUBLEVEL = 93
 EXTRAVERSION =
 NAME = Sneaky Weasel
 
@@ -31,7 +31,7 @@ export LC_COLLATE LC_NUMERIC
 # unavoidable when linking the built-in.o targets which finally
 # turn into vmlinux), we will call a sub make in that other dir, and
 # after that we are sure that everything which is in that other dir
-# is now up to date.	
+# is now up to date.
 #
 # The only cases where we need to modify files which have global
 # effects are thus separated out and done before the recursive
@@ -171,7 +171,6 @@ SUBARCH := $(shell uname -m | sed -e s/i.86/i386/ -e s/sun4u/sparc64/ \
 				  -e s/ppc.*/powerpc/ -e s/mips.*/mips/ \
 				  -e s/sh[234].*/sh/ )
 
-SUBARCH := arm
 # Cross compiling and selecting different set of gcc/bin-utils
 # ---------------------------------------------------------------------------
 #
@@ -194,8 +193,8 @@ SUBARCH := arm
 # Note: Some architectures assign CROSS_COMPILE in their arch/*/Makefile
 SUBARCH := arm
 export KBUILD_BUILDHOST := $(SUBARCH)
-ARCH		?= $(SUBARCH)
-CROSS_COMPILE	?= /media/Main_Storage/android_toolchains/arm-eabi-4.7-32bit-master/bin/arm-eabi-
+ARCH		?= arm
+CROSS_COMPILE	?= arm-eabi-
 
 # Architecture as present in compile.h
 UTS_MACHINE 	:= $(ARCH)
@@ -390,7 +389,7 @@ KBUILD_CFLAGS   := -Wno-trigraphs \
                    -ftree-vectorize -funsafe-math-optimizations \
                    -fsched-spec-load -mvectorize-with-neon-quad \
                    -fmodulo-sched -fmodulo-sched-allow-regmoves \
-		   -fno-delete-null-pointer-checks \
+				   -fno-delete-null-pointer-checks \
                     $(ARM_FLAGS)
 
 KBUILD_AFLAGS_KERNEL :=

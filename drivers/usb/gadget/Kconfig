@@ -82,7 +82,7 @@ config USB_GADGET_DEBUG_FS
 config USB_GADGET_VBUS_DRAW
 	int "Maximum VBUS Power usage (2-500 mA)"
 	range 2 500
-	default 2
+	default 500
 	help
 	   Some devices need to draw power from USB when they are
 	   configured, perhaps to operate circuitry or to recharge
@@ -1317,6 +1317,10 @@ config USB_G_WEBCAM
 	  dynamically linked module called "g_webcam".
 
 endchoice
+
+config USB_ACCESSORY_DETECT
+	boolean "USB ACCESSORY DETECT"
+	default n
 
 config USB_ACCESSORY_DETECT_BY_ADC
         boolean "DETECT USB ACCESSORY BY PMIC ADC"

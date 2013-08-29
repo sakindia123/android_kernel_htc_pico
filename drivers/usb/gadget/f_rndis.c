@@ -394,7 +394,7 @@ static void rndis_command_complete(struct usb_ep *ep, struct usb_request *req)
 	int				status;
 
 	if (req->status < 0) {
-		pr_err("%s: staus error: %d\n", __func__, req->status);
+		pr_warning("%s: staus error: %d\n", __func__, req->status);
 		return;
 	}
 

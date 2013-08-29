@@ -564,3 +564,4 @@ const char *netdev_evt_str(int netdev_event)
 		return "bad event num";
 	return netdev_event_strings[netdev_event];
 }
+

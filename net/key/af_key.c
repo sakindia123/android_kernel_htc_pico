@@ -273,19 +273,8 @@ static int pfkey_broadcast(struct sk_buff *skb, gfp_t allocation,
 	if (one_sk != NULL)
 		err = pfkey_broadcast_one(skb, &skb2, allocation, one_sk);
 
-#ifdef CONFIG_HTC_NETWORK_MODIFY
-	if (!IS_ERR(skb2) && (skb2))
-		kfree_skb(skb2);
-#else
 	kfree_skb(skb2);
-#endif
-
-#ifdef CONFIG_HTC_NETWORK_MODIFY
-	if (!IS_ERR(skb) && (skb))
-		kfree_skb(skb);
-#else
 	kfree_skb(skb);
-#endif
 
 	return err;
 }
@@ -1332,12 +1321,6 @@ static int pfkey_getspi(struct sock *sk, struct sk_buff *skb, const struct sadb_
 	}
 
 	if (hdr->sadb_msg_seq) {
-
-#ifdef CONFIG_HTC_NETWORK_MODIFY
-	if (IS_ERR(xdaddr) || (!xdaddr))
-		printk(KERN_ERR "[NET] xdaddr is NULL in %s!\n", __func__);
-#endif
-
 		x = xfrm_find_acq_byseq(net, DUMMY_MARK, hdr->sadb_msg_seq);
 		if (x && xfrm_addr_cmp(&x->id.daddr, xdaddr, family)) {
 			xfrm_state_put(x);
@@ -2091,6 +2074,7 @@ static int pfkey_xfrm_policy2msg(struct sk_buff *skb, const struct xfrm_policy *
 			pol->sadb_x_policy_type = IPSEC_POLICY_NONE;
 	}
 	pol->sadb_x_policy_dir = dir+1;
+	pol->sadb_x_policy_reserved = 0;
 	pol->sadb_x_policy_id = xp->index;
 	pol->sadb_x_policy_priority = xp->priority;
 
@@ -2704,6 +2688,7 @@ static int key_notify_policy_flush(const struct km_event *c)
 	hdr->sadb_msg_pid = c->pid;
 	hdr->sadb_msg_version = PF_KEY_V2;
 	hdr->sadb_msg_errno = (uint8_t) 0;
+	hdr->sadb_msg_satype = SADB_SATYPE_UNSPEC;
 	hdr->sadb_msg_len = (sizeof(struct sadb_msg) / sizeof(uint64_t));
 	hdr->sadb_msg_reserved = 0;
 	pfkey_broadcast(skb_out, GFP_ATOMIC, BROADCAST_ALL, NULL, c->net);
@@ -3126,7 +3111,9 @@ static int pfkey_send_acquire(struct xfrm_state *x, struct xfrm_tmpl *t, struct 
 	pol->sadb_x_policy_exttype = SADB_X_EXT_POLICY;
 	pol->sadb_x_policy_type = IPSEC_POLICY_IPSEC;
 	pol->sadb_x_policy_dir = dir+1;
+	pol->sadb_x_policy_reserved = 0;
 	pol->sadb_x_policy_id = xp->index;
+	pol->sadb_x_policy_priority = xp->priority;
 
 	/* Set sadb_comb's. */
 	if (x->id.proto == IPPROTO_AH)
@@ -3514,6 +3501,7 @@ static int pfkey_send_migrate(const struct xfrm_selector *sel, u8 dir, u8 type,
 	pol->sadb_x_policy_exttype = SADB_X_EXT_POLICY;
 	pol->sadb_x_policy_type = IPSEC_POLICY_IPSEC;
 	pol->sadb_x_policy_dir = dir + 1;
+	pol->sadb_x_policy_reserved = 0;
 	pol->sadb_x_policy_id = 0;
 	pol->sadb_x_policy_priority = 0;
 
@@ -3591,13 +3579,7 @@ out:
 	if (err && hdr && pfkey_error(hdr, err, sk) == 0)
 		err = 0;
 
-#ifdef CONFIG_HTC_NETWORK_MODIFY
-	if (!IS_ERR(skb) && (skb))
-		kfree_skb(skb);
-#else
 	kfree_skb(skb);
-#endif
-
 
 	return err ? : len;
 }

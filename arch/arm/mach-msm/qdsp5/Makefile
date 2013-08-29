@@ -10,12 +10,11 @@ obj-$(CONFIG_DEBUG_FS) += audio_voice_lb.o
 else
 obj-y += audio_in.o snd_pcm_client.o
 endif
-#obj-$(CONFIG_MSM7X27A_AUDIO) += audio_aac_in.o audio_evrc_in.o audio_qcelp_in.o
-obj-y += audio_out.o audmgr.o audpp.o audpreproc.o
-#obj-y += audio_mp3.o audrec.o
-#obj-y += audio_evrc.o audio_qcelp.o audio_amrnb.o audio_aac.o audio_amrnb_in.o
-#obj-y += audio_wma.o audio_voicememo.o audio_pcm.o audio_amrwb.o audio_wmapro.o
+obj-$(CONFIG_MSM7X27A_AUDIO) += audio_aac_in.o audio_evrc_in.o audio_qcelp_in.o
+obj-y += audio_out.o audio_mp3.o audmgr.o audpp.o audrec.o audpreproc.o
+obj-y += audio_evrc.o audio_qcelp.o audio_amrnb.o audio_aac.o audio_amrnb_in.o
+obj-y += audio_wma.o audio_voicememo.o audio_pcm.o audio_amrwb.o audio_wmapro.o
 obj-y += snd.o snd_adie.o
 obj-$(CONFIG_ARCH_MSM7X27A) += audio_fm.o
 obj-$(CONFIG_ARCH_MSM7X27A) += audio_mvs.o
-obj-$(CONFIG_ARCH_MSM7X27A) += audio_voicememo.o
+obj-$(CONFIG_ARCH_MSM7X27A) += audio_lpa.o

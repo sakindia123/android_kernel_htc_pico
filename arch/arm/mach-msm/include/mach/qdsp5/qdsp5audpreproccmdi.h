@@ -233,11 +233,11 @@ typedef struct {
 	unsigned short 	denominator_coeff_a0_filter1_msw;
 	unsigned short 	denominator_coeff_a1_filter1_lsw;
 	unsigned short 	denominator_coeff_a1_filter1_msw;
-  unsigned short 	denominator_coeff_a0_filter2_lsw;
+	unsigned short 	denominator_coeff_a0_filter2_lsw;
 	unsigned short 	denominator_coeff_a0_filter2_msw;
 	unsigned short 	denominator_coeff_a1_filter2_lsw;
 	unsigned short 	denominator_coeff_a1_filter2_msw;
-  unsigned short 	denominator_coeff_a0_filter3_lsw;
+	unsigned short 	denominator_coeff_a0_filter3_lsw;
 	unsigned short 	denominator_coeff_a0_filter3_msw;
 	unsigned short 	denominator_coeff_a1_filter3_lsw;
 	unsigned short 	denominator_coeff_a1_filter3_msw;

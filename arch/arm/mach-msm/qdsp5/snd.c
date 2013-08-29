@@ -51,8 +51,8 @@ static struct snd_ctxt the_snd;
 #define RPC_SND_PROG	0x30000002
 #define RPC_SND_CB_PROG	0x31000002
 
-#define RPC_SND_VERS	0x00020001
-#define RPC_SND_VERS2	0x00030001
+#define RPC_SND_VERS                    0x00020001
+#define RPC_SND_VERS2                    0x00030001
 
 #define SND_SET_DEVICE_PROC 2
 #define SND_SET_VOLUME_PROC 3
@@ -164,7 +164,7 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	switch (cmd) {
 	case SND_SET_DEVICE:
 		if (copy_from_user(&dev, (void __user *) arg, sizeof(dev))) {
-			MM_AUD_ERR("set device: invalid pointer\n");
+			MM_ERR("set device: invalid pointer\n");
 			rc = -EFAULT;
 			break;
 		}
@@ -174,14 +174,14 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		dmsg.args.mic_mute = cpu_to_be32(dev.mic_mute);
 		if (check_mute(dev.ear_mute) < 0 ||
 				check_mute(dev.mic_mute) < 0) {
-			MM_AUD_ERR("set device: invalid mute status\n");
+			MM_ERR("set device: invalid mute status\n");
 			rc = -EINVAL;
 			break;
 		}
 		dmsg.args.cb_func = -1;
 		dmsg.args.client_data = 0;
 
-		MM_AUD_INFO("snd_set_device %d %d %d\n", dev.device,
+		MM_INFO("snd_set_device %d %d %d\n", dev.device,
 				dev.ear_mute, dev.mic_mute);
 
 		rc = msm_rpc_call(snd->ept,
@@ -192,7 +192,7 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 	case SND_SET_VOLUME:
 		if (copy_from_user(&vol, (void __user *) arg, sizeof(vol))) {
-			MM_AUD_ERR("set volume: invalid pointer\n");
+			MM_ERR("set volume: invalid pointer\n");
 			rc = -EFAULT;
 			break;
 		}
@@ -200,7 +200,7 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		vmsg.args.device = cpu_to_be32(vol.device);
 		vmsg.args.method = cpu_to_be32(vol.method);
 		if (vol.method != SND_METHOD_VOICE) {
-			MM_AUD_ERR("set volume: invalid method\n");
+			MM_ERR("set volume: invalid method\n");
 			rc = -EINVAL;
 			break;
 		}
@@ -209,7 +209,7 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		vmsg.args.cb_func = -1;
 		vmsg.args.client_data = 0;
 
-		MM_AUD_INFO("snd_set_volume %d %d %d\n", vol.device,
+		MM_INFO("snd_set_volume %d %d %d\n", vol.device,
 				vol.method, vol.volume);
 
 		rc = msm_rpc_call(snd->ept,
@@ -230,7 +230,7 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		avc_msg.args.cb_func = -1;
 		avc_msg.args.client_data = 0;
 
-		MM_AUD_INFO("snd_avc_ctl %d\n", avc);
+		MM_INFO("snd_avc_ctl %d\n", avc);
 
 		rc = msm_rpc_call(snd->ept,
 			SND_AVC_CTL_PROC,
@@ -249,7 +249,7 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		agc_msg.args.cb_func = -1;
 		agc_msg.args.client_data = 0;
 
-		MM_AUD_INFO("snd_agc_ctl %d\n", agc);
+		MM_INFO("snd_agc_ctl %d\n", agc);
 
 		rc = msm_rpc_call(snd->ept,
 			SND_AGC_CTL_PROC,
@@ -269,7 +269,7 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		break;
 
 	default:
-		MM_AUD_ERR("unknown command\n");
+		MM_ERR("unknown command\n");
 		rc = -EINVAL;
 		break;
 	}
@@ -286,7 +286,7 @@ static int snd_release(struct inode *inode, struct file *file)
 	mutex_lock(&snd->lock);
 	rc = msm_rpc_close(snd->ept);
 	if (rc < 0)
-		MM_AUD_ERR("msm_rpc_close failed\n");
+		MM_ERR("msm_rpc_close failed\n");
 	snd->ept = NULL;
 	snd->opened = 0;
 	mutex_unlock(&snd->lock);
@@ -316,7 +316,7 @@ static int snd_open(struct inode *inode, struct file *file)
 			snd->ept = msm_rpc_connect_compatible(RPC_SND_PROG,
 					RPC_SND_VERS2, 0);
 			if (IS_ERR(snd->ept)) {
-				MM_AUD_DBG("connect failed with current VERS \
+				MM_DBG("connect failed with current VERS \
 					= %x, trying again with another API\n",
 					RPC_SND_VERS2);
 				snd->ept =
@@ -326,14 +326,14 @@ static int snd_open(struct inode *inode, struct file *file)
 			if (IS_ERR(snd->ept)) {
 				rc = PTR_ERR(snd->ept);
 				snd->ept = NULL;
-				MM_AUD_ERR("failed to connect snd svc\n");
+				MM_ERR("failed to connect snd svc\n");
 				goto err;
 			}
 		}
 		file->private_data = snd;
 		snd->opened = 1;
 	} else {
-		MM_AUD_ERR("snd already opened\n");
+		MM_ERR("snd already opened\n");
 		rc = -EBUSY;
 	}
 

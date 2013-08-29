@@ -30,12 +30,6 @@
 #include <linux/android_pmem.h>
 #include <mach/debug_mm.h>
 
-#undef   pr_info
-#define  pr_info(fmt,args...) do { } while(0)
-
-#undef   pr_debug
-#define  pr_debug(fmt,args...) do { } while(0)
-
 struct adsp_pmem_info {
 	int fd;
 	void *vaddr;
@@ -154,9 +148,7 @@ static int adsp_pmem_add(struct msm_adsp_module *module,
 	region->kvaddr = kvaddr;
 	region->len = len;
 	region->file = file;
-	pr_info("adsp_pmem_add module %s vaddr:0x%x paddr:0x%x len:%d\n",
-		module->name, (unsigned int) region->vaddr,
-		(unsigned int) region->paddr, (int) region->len);
+
 	hlist_add_head(&region->list, &module->pmem_regions);
 end:
 	mutex_unlock(&module->pmem_regions_lock);
@@ -190,7 +182,7 @@ static int adsp_pmem_lookup_vaddr(struct msm_adsp_module *module, void **addr,
 	}
 
 	if (match_count > 1) {
-		printk(KERN_ERR "adsp: module %s: "
+		MM_ERR("module %s: "
 			"multiple hits for vaddr %p, len %ld\n",
 			module->name, vaddr, len);
 		hlist_for_each_entry(region_elt, node,
@@ -198,7 +190,7 @@ static int adsp_pmem_lookup_vaddr(struct msm_adsp_module *module, void **addr,
 			if (vaddr >= region_elt->vaddr &&
 			    vaddr < region_elt->vaddr + region_elt->len &&
 			    vaddr + len <= region_elt->vaddr + region_elt->len)
-				printk(KERN_ERR "\t%p, %ld --> %p\n",
+				MM_ERR("%p, %ld --> %p\n",
 					region_elt->vaddr,
 					region_elt->len,
 					(void *)region_elt->paddr);
@@ -219,7 +211,7 @@ int adsp_pmem_fixup_kvaddr(struct msm_adsp_module *module, void **addr,
 
 	ret = adsp_pmem_lookup_vaddr(module, addr, len, &region);
 	if (ret) {
-		printk(KERN_ERR "adsp: not patching %s (paddr & kvaddr),"
+		MM_ERR("not patching %s (paddr & kvaddr),"
 			" lookup (%p, %ld) failed\n",
 			module->name, vaddr, len);
 		return ret;
@@ -243,7 +235,7 @@ int adsp_pmem_fixup(struct msm_adsp_module *module, void **addr,
 
 	ret = adsp_pmem_lookup_vaddr(module, addr, len, &region);
 	if (ret) {
-		printk(KERN_ERR "adsp: not patching %s, lookup (%p, %ld) failed\n",
+		MM_ERR("not patching %s, lookup (%p, %ld) failed\n",
 			module->name, vaddr, len);
 		return ret;
 	}
@@ -261,7 +253,7 @@ static int adsp_verify_cmd(struct msm_adsp_module *module,
 		return module->verify_cmd(module, queue_id, cmd_data,
 					     cmd_size);
 	else
-		printk(KERN_INFO "adsp: no packet verifying function "
+		MM_INFO("no packet verifying function "
 				 "for task %s\n", module->name);
 	return 0;
 }
@@ -286,13 +278,12 @@ static long adsp_write_cmd(struct adsp_device *adev, void __user *arg)
 
 	if (copy_from_user(cmd_data, (void __user *)(cmd.data), cmd.len)) {
 		rc = -EFAULT;
-		goto end2;
+		goto end;
 	}
 
 	mutex_lock(&adev->module->pmem_regions_lock);
 	if (adsp_verify_cmd(adev->module, cmd.queue, cmd_data, cmd.len)) {
-		printk(KERN_ERR "module %s: verify failed.\n",
-			adev->module->name);
+		MM_ERR("module %s: verify failed.\n", adev->module->name);
 		rc = -EINVAL;
 		goto end;
 	}
@@ -301,7 +292,7 @@ static long adsp_write_cmd(struct adsp_device *adev, void __user *arg)
 	rc = msm_adsp_write(adev->module, cmd.queue, cmd_data, cmd.len);
 end:
 	mutex_unlock(&adev->module->pmem_regions_lock);
-end2:
+
 	if (cmd.len > 256)
 		kfree(cmd_data);
 
@@ -344,7 +335,7 @@ int adsp_pmem_paddr_fixup(struct msm_adsp_module *module, void **addr)
 
 	ret = adsp_pmem_lookup_paddr(module, addr, &region);
 	if (ret) {
-		printk(KERN_ERR "adsp: not patching %s, paddr %p lookup failed\n",
+		MM_ERR("not patching %s, paddr %p lookup failed\n",
 			module->name, vaddr);
 		return ret;
 	}
@@ -448,14 +439,6 @@ static int adsp_pmem_del(struct msm_adsp_module *module)
 		region = hlist_entry(node, struct adsp_pmem_region, list);
 		hlist_del(node);
 		put_pmem_file(region->file);
-
-		pr_info("%s name %s vaddr:0x%x paddr:0x%x len:%d\n",
-			__func__,
-			module->name,
-			(unsigned int) region->vaddr,
-			(unsigned int) region->paddr,
-			(int) region->len);
-
 		kfree(region);
 	}
 	mutex_unlock(&module->pmem_regions_lock);
@@ -479,7 +462,7 @@ static long adsp_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		return msm_adsp_disable_event_rsp(adev->module);
 
 	case ADSP_IOCTL_DISABLE_ACK:
-		pr_err("adsp: ADSP_IOCTL_DISABLE_ACK is not implemented.\n");
+		MM_ERR("ADSP_IOCTL_DISABLE_ACK is not implemented\n");
 		break;
 
 	case ADSP_IOCTL_WRITE_COMMAND:
@@ -497,10 +480,8 @@ static long adsp_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	case ADSP_IOCTL_REGISTER_PMEM: {
 		struct adsp_pmem_info info;
-		if (copy_from_user(&info, (void *) arg, sizeof(info))){
-			pr_info("adsp: ADSP_IOCTL_REGISTER_PMEM copy from user failed\n");
+		if (copy_from_user(&info, (void *) arg, sizeof(info)))
 			return -EFAULT;
-		}
 		return adsp_pmem_add(adev->module, &info);
 	}
 
@@ -524,7 +505,7 @@ static int adsp_release(struct inode *inode, struct file *filp)
 	struct msm_adsp_module *module = adev->module;
 	int rc = 0;
 
-	pr_info("adsp: release '%s'\n", adev->name);
+	MM_INFO("release '%s'\n", adev->name);
 
 	/* clear module before putting it to avoid race with open() */
 	adev->module = NULL;
@@ -533,7 +514,7 @@ static int adsp_release(struct inode *inode, struct file *filp)
 
 	msm_adsp_put(module);
 	if (strcmp(adev->name, "VIDEOENCTASK") == 0) {
-		pr_info("VIDEOENCTASK is closed, unset PWRSINK_VIDEO\n");
+		MM_INFO("VIDEOENCTASK is closed, unset PWRSINK_VIDEO\n");
 		/* video recording end */
 		htc_pwrsink_set(PWRSINK_VIDEO, 0);
 	}
@@ -548,13 +529,13 @@ static void adsp_event(void *driver_data, unsigned id, size_t len,
 	unsigned long flags;
 
 	if (len > ADSP_EVENT_MAX_SIZE) {
-		pr_err("adsp_event: event too large (%d bytes)\n", len);
+		MM_ERR("event too large (%d bytes)\n", len);
 		return;
 	}
 
 	event = kmalloc(sizeof(*event), GFP_ATOMIC);
 	if (!event) {
-		pr_err("adsp_event: cannot allocate buffer\n");
+		MM_ERR("cannot allocate buffer\n");
 		return;
 	}
 
@@ -595,13 +576,13 @@ static int adsp_open(struct inode *inode, struct file *filp)
 	if (!adev)
 		return -ENODEV;
 
-	pr_info("adsp_open() name = '%s'\n", adev->name);
+	MM_INFO("open '%s'\n", adev->name);
 
 	rc = msm_adsp_get(adev->name, &adev->module, &adsp_ops, adev);
 	if (rc)
 		return rc;
 
-	pr_info("adsp_open() module '%s' adev %p\n", adev->name, adev);
+	MM_INFO("adsp_open() module '%s' adev %p\n", adev->name, adev);
 	if (strcmp(adev->name, "VIDEOENCTASK") == 0) {
 		pr_info("VIDEOENCTASK is opened, set PWRSINK_VIDEO\n");
 		/* video recording start */

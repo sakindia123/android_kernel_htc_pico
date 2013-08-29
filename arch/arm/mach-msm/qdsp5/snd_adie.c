@@ -38,7 +38,7 @@ static int adie_svc_process_cb(struct msm_rpc_client *client,
 			break;
 	}
 	if (id == ADIE_SVC_MAX_CLIENTS) {
-		MM_AUD_ERR("RPC reply with invalid rpc client\n");
+		MM_ERR("RPC reply with invalid rpc client\n");
 		accept_status = RPC_ACCEPTSTAT_SYSTEM_ERR;
 		goto err;
 	}
@@ -52,7 +52,7 @@ static int adie_svc_process_cb(struct msm_rpc_client *client,
 	arg.client_operation	= be32_to_cpu(buf_ptr->client_operation);
 
 	if (arg.cb_id != adie_client[id].cb_id) {
-		MM_AUD_ERR("RPC reply with invalid invalid cb_id\n");
+		MM_ERR("RPC reply with invalid invalid cb_id\n");
 		accept_status = RPC_ACCEPTSTAT_SYSTEM_ERR;
 		goto err;
 	}
@@ -60,14 +60,14 @@ static int adie_svc_process_cb(struct msm_rpc_client *client,
 	mutex_lock(&adie_client[id].lock);
 	switch (arg.client_operation) {
 	case ADIE_SVC_REGISTER_CLIENT:
-		MM_AUD_DBG("ADIE_SVC_REGISTER_CLIENT callback\n");
+		MM_DBG("ADIE_SVC_REGISTER_CLIENT callback\n");
 		adie_client[id].client_id = arg.client_id;
 		break;
 	case ADIE_SVC_DEREGISTER_CLIENT:
-		MM_AUD_DBG("ADIE_SVC_DEREGISTER_CLIENT callback\n");
+		MM_DBG("ADIE_SVC_DEREGISTER_CLIENT callback\n");
 		break;
 	case ADIE_SVC_CONFIG_ADIE_BLOCK:
-		MM_AUD_DBG("ADIE_SVC_CONFIG_ADIE_BLOCK callback\n");
+		MM_DBG("ADIE_SVC_CONFIG_ADIE_BLOCK callback\n");
 		if (adie_client[id].client_id != arg.client_id) {
 			mutex_unlock(&adie_client[id].lock);
 			accept_status = RPC_ACCEPTSTAT_SYSTEM_ERR;
@@ -90,7 +90,7 @@ err:
 				     accept_status);
 	rc = msm_rpc_send_accepted_reply(client, 0);
 	if (rc)
-		MM_AUD_ERR("%s: send accepted reply failed: %d\n", __func__, rc);
+		MM_ERR("%s: send accepted reply failed: %d\n", __func__, rc);
 
 	return rc;
 }
@@ -103,20 +103,20 @@ static int adie_svc_rpc_cb_func(struct msm_rpc_client *client,
 
 	req = (struct rpc_request_hdr *)buffer;
 
-	MM_AUD_DBG("procedure received to rpc cb %d\n",
+	MM_DBG("procedure received to rpc cb %d\n",
 			be32_to_cpu(req->procedure));
 	switch (be32_to_cpu(req->procedure)) {
 	case ADIE_SVC_CLIENT_STATUS_FUNC_PTR_TYPE_PROC:
 		rc = adie_svc_process_cb(client, buffer, in_size);
 		break;
 	default:
-		MM_AUD_ERR("%s: procedure not supported %d\n", __func__,
+		MM_ERR("%s: procedure not supported %d\n", __func__,
 		       be32_to_cpu(req->procedure));
 		msm_rpc_start_accepted_reply(client, be32_to_cpu(req->xid),
 					     RPC_ACCEPTSTAT_PROC_UNAVAIL);
 		rc = msm_rpc_send_accepted_reply(client, 0);
 		if (rc)
-			MM_AUD_ERR("%s: sending reply failed: %d\n", __func__, rc);
+			MM_ERR("%s: sending reply failed: %d\n", __func__, rc);
 		break;
 	}
 	return rc;
@@ -191,7 +191,7 @@ int adie_svc_get(void)
 							ADIE_SVC_VERS, 1,
 							adie_svc_rpc_cb_func);
 	if (IS_ERR(adie_client[id].rpc_client)) {
-		MM_AUD_ERR("Failed to register RPC client\n");
+		MM_ERR("Failed to register RPC client\n");
 		adie_client[id].rpc_client = NULL;
 		mutex_unlock(&adie_client[id].lock);
 		mutex_unlock(&adie_client_lock);
@@ -213,24 +213,24 @@ int adie_svc_get(void)
 		mutex_lock(&adie_client[id].lock);
 		if (unlikely(rc < 0)) {
 			if (rc == -ERESTARTSYS)
-				MM_AUD_ERR("wait_event_interruptible "
+				MM_ERR("wait_event_interruptible "
 						"returned -ERESTARTSYS\n");
 			else
-				MM_AUD_ERR("wait_event_interruptible "
+				MM_ERR("wait_event_interruptible "
 						"returned error\n");
 			rc = -1;
 			goto err;
 		}
-		MM_AUD_DBG("Status %d received from CB function, id %d rc %d\n",
+		MM_DBG("Status %d received from CB function, id %d rc %d\n",
 		       adie_client[id].status, adie_client[id].client_id, rc);
 		rc = id;
 		if (adie_client[id].status == ADIE_SVC_STATUS_FAILURE) {
-			MM_AUD_ERR("Received failed status for register request\n");
+			MM_ERR("Received failed status for register request\n");
 			rc = -1;
 		} else
 			goto done;
 	} else {
-		MM_AUD_ERR("Failed to send register client request\n");
+		MM_ERR("Failed to send register client request\n");
 		rc = -1;
 		mutex_lock(&adie_client[id].lock);
 	}
@@ -275,15 +275,15 @@ int adie_svc_put(int id)
 				adie_client[id].adie_svc_cb_done);
 		if (unlikely(rc < 0)) {
 			if (rc == -ERESTARTSYS)
-				MM_AUD_ERR("wait_event_interruptible "
+				MM_ERR("wait_event_interruptible "
 						"returned -ERESTARTSYS\n");
 			else
-				MM_AUD_ERR("wait_event_interruptible "
+				MM_ERR("wait_event_interruptible "
 						"returned error\n");
 			rc = -1;
 			goto err;
 		}
-		MM_AUD_DBG("Status received from CB function\n");
+		MM_DBG("Status received from CB function\n");
 		mutex_lock(&adie_client[id].lock);
 		if (adie_client[id].status == ADIE_SVC_STATUS_FAILURE) {
 			rc = -1;
@@ -296,7 +296,7 @@ int adie_svc_put(int id)
 		}
 		mutex_unlock(&adie_client[id].lock);
 	} else {
-		MM_AUD_ERR("Failed to send deregister client request\n");
+		MM_ERR("Failed to send deregister client request\n");
 		rc = -1;
 	}
 err:
@@ -337,15 +337,15 @@ int adie_svc_config_adie_block(int id,
 				adie_client[id].adie_svc_cb_done);
 		if (unlikely(rc < 0)) {
 			if (rc == -ERESTARTSYS)
-				MM_AUD_ERR("wait_event_interruptible "
+				MM_ERR("wait_event_interruptible "
 						"returned -ERESTARTSYS\n");
 			else
-				MM_AUD_ERR("wait_event_interruptible "
+				MM_ERR("wait_event_interruptible "
 						"returned error\n");
 			rc = -1;
 			goto err;
 		}
-		MM_AUD_DBG("Status received from CB function\n");
+		MM_DBG("Status received from CB function\n");
 		mutex_lock(&adie_client[id].lock);
 		if (adie_client[id].status == ADIE_SVC_STATUS_FAILURE)
 			rc = -1;
@@ -353,7 +353,7 @@ int adie_svc_config_adie_block(int id,
 			rc = adie_client[id].status;
 		mutex_unlock(&adie_client[id].lock);
 	} else {
-		MM_AUD_ERR("Failed to send adie block config request\n");
+		MM_ERR("Failed to send adie block config request\n");
 		rc = -1;
 	}
 err:
@@ -378,40 +378,40 @@ static ssize_t snd_adie_debug_write(struct file *file, const char __user *buf,
 	int id = 0, adie_block = 0, config = 1;
 
 	sscanf(buf, "%d %d %d %d", &op, &id, &adie_block, &config);
-	MM_AUD_INFO("\nUser input: op %d id %d block %d config %d\n", op, id,
+	MM_INFO("\nUser input: op %d id %d block %d config %d\n", op, id,
 			adie_block, config);
 	switch (op) {
 	case ADIE_SVC_REGISTER_CLIENT:
-		MM_AUD_INFO("ADIE_SVC_REGISTER_CLIENT\n");
+		MM_INFO("ADIE_SVC_REGISTER_CLIENT\n");
 		rc = adie_svc_get();
 		if (rc >= 0)
-			MM_AUD_INFO("Client registered: %d\n", rc);
+			MM_INFO("Client registered: %d\n", rc);
 		else
-			MM_AUD_ERR("Failed registering client\n");
+			MM_ERR("Failed registering client\n");
 		break;
 	case ADIE_SVC_DEREGISTER_CLIENT:
-		MM_AUD_INFO("ADIE_SVC_DEREGISTER_CLIENT: %d\n", id);
+		MM_INFO("ADIE_SVC_DEREGISTER_CLIENT: %d\n", id);
 		rc = adie_svc_put(id);
 		if (!rc)
-			MM_AUD_INFO("Client %d deregistered\n", id);
+			MM_INFO("Client %d deregistered\n", id);
 		else
-			MM_AUD_ERR("Failed unregistering the client: %d\n",	id);
+			MM_ERR("Failed unregistering the client: %d\n",	id);
 		break;
 	case ADIE_SVC_CONFIG_ADIE_BLOCK:
-		MM_AUD_INFO("ADIE_SVC_CONFIG_ADIE_BLOCK: id %d adie_block %d \
+		MM_INFO("ADIE_SVC_CONFIG_ADIE_BLOCK: id %d adie_block %d \
 				config %d\n", id, adie_block, config);
 		rc =  adie_svc_config_adie_block(id,
 			(enum adie_block_enum_type)adie_block, (bool)config);
 		if (!rc)
-			MM_AUD_INFO("ADIE block %d %s", adie_block,
+			MM_INFO("ADIE block %d %s", adie_block,
 					config ? "enabled\n" : "disabled\n");
 		else if (rc == 2)
-			MM_AUD_INFO("ADIE block %d already in use\n", adie_block);
+			MM_INFO("ADIE block %d already in use\n", adie_block);
 		else
-			MM_AUD_ERR("ERROR configuring the ADIE block\n");
+			MM_ERR("ERROR configuring the ADIE block\n");
 		break;
 	default:
-		MM_AUD_INFO("Invalid operation\n");
+		MM_INFO("Invalid operation\n");
 	}
 	return count;
 }
@@ -459,10 +459,10 @@ static int __init snd_adie_init(void)
 	char name[sizeof "msm_snd_adie"];
 
 	snprintf(name, sizeof name, "msm_snd_adie");
-	dentry = debugfs_create_file(name, S_IFREG | S_IRUGO | S_IWUSR | S_IWGRP,
+	dentry = debugfs_create_file(name, S_IFREG | S_IRUGO | S_IWUGO,
 			NULL, NULL, &snd_adie_debug_fops);
 	if (IS_ERR(dentry))
-		MM_AUD_DBG("debugfs_create_file failed\n");
+		MM_DBG("debugfs_create_file failed\n");
 #endif
 	for (id = 0; id < ADIE_SVC_MAX_CLIENTS; id++) {
 		adie_client[id].client_id = -1;

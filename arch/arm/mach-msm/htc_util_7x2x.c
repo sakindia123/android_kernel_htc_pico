@@ -12,7 +12,6 @@
 #include <../pm.h>
 #include <linux/vmalloc.h>
 #include <mach/board.h>
-#include <mach/perflock.h>
 #include <mach/msm_iomap.h>
 
 
@@ -149,7 +148,6 @@ void htc_PM_monitor_work(struct work_struct *work)
 	htc_timer_stats_OnOff('0');
 	htc_timer_stats_show(300);
 	htc_timer_stats_OnOff('1');
-	htc_print_active_perf_locks();
 	htc_print_active_wake_locks(WAKE_LOCK_IDLE);
 	htc_print_active_wake_locks(WAKE_LOCK_SUSPEND);
 

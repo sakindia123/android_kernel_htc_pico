@@ -56,10 +56,6 @@
 #include <mach/sdio_al.h>
 #include <linux/rtc.h>
 
-#ifdef CONFIG_PERFLOCK
-#include <mach/perflock.h>
-#endif
-
 #include "msm_sdcc.h"
 #include "msm_sdcc_dml.h"
 
@@ -130,10 +126,6 @@ static int msmsdcc_runtime_resume(struct device *dev);
 /* HTC_CSP_START */
 int wlan_ioprio_idle=0;
 EXPORT_SYMBOL(wlan_ioprio_idle);
-#ifdef CONFIG_PERFLOCK
-struct perf_lock wlan_perf_lock;
-EXPORT_SYMBOL(wlan_perf_lock);
-#endif
 static int wifi_is_on = 0;
 void set_wifi_is_on (int on){
     wifi_is_on = on;
@@ -5469,11 +5461,6 @@ static int __init msmsdcc_init(void)
 		return ret;
 	}
 #endif
-		/*HTC_CSP_START*/
-#ifdef CONFIG_PERFLOCK
-		perf_lock_init(&wlan_perf_lock, PERF_LOCK_HIGHEST, "bcm4329");
-#endif
-		/*HTC_CSP_END*/
 	return platform_driver_register(&msmsdcc_driver);
 }
 

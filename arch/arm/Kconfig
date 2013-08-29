@@ -16,9 +16,11 @@ config ARM
 	select HAVE_KERNEL_GZIP
 	select HAVE_KERNEL_LZO
 	select HAVE_KERNEL_LZMA
+	select HAVE_KERNEL_XZ
 	select HAVE_IRQ_WORK
 	select HAVE_PERF_EVENTS
 	select PERF_USE_VMALLOC
+	select HAVE_HW_BREAKPOINT if (PERF_EVENTS && (CPU_V6 || CPU_V6K || CPU_V7))
 	select HAVE_GENERIC_HARDIRQS
 	select HAVE_SPARSE_IRQ
 	select GENERIC_IRQ_SHOW
@@ -136,7 +138,7 @@ config ARM_TICKET_LOCKS
 	  Enable ticket locks, which help preserve fairness among
 	  contended locks and prevent livelock in multicore systems.
 	  Say 'y' if system stability is important.
-	default y if ARCH_MSM_SCORPIONMP
+	default y if ARCH_MSM_SCORPIONMP || ARCH_MSM_KRAITMP
 	depends on SMP
 
 config RWSEM_GENERIC_SPINLOCK

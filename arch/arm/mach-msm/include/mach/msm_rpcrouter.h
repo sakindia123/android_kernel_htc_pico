@@ -127,6 +127,7 @@ struct rpc_board_dev {
 
 /* flags for msm_rpc_connect() */
 #define MSM_RPC_UNINTERRUPTIBLE 0x0001
+#define MSM_RPC_ENABLE_RECEIVE (0x10000) /* from qdsp5_comp */
 
 /* use IS_ERR() to check for failure */
 struct msm_rpc_endpoint *msm_rpc_open(void);

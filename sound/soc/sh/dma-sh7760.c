@@ -327,10 +327,10 @@ static void camelot_pcm_free(struct snd_pcm *pcm)
 	snd_pcm_lib_preallocate_free_for_all(pcm);
 }
 
-static int camelot_pcm_new(struct snd_card *card,
-			   struct snd_soc_dai *dai,
-			   struct snd_pcm *pcm)
+static int camelot_pcm_new(struct snd_soc_pcm_runtime *rtd)
 {
+	struct snd_pcm *pcm = rtd->pcm;
+
 	/* dont use SNDRV_DMA_TYPE_DEV, since it will oops the SH kernel
 	 * in MMAP mode (i.e. aplay -M)
 	 */
@@ -342,8 +342,8 @@ static int camelot_pcm_new(struct snd_card *card,
 	return 0;
 }
 
-static struct snd_soc_platform_driver sh7760_soc_platform = {
-	.ops		= &camelot_pcm_ops,
+static struct snd_soc_platform sh7760_soc_platform = {
+	.pcm_ops 	= &camelot_pcm_ops,
 	.pcm_new	= camelot_pcm_new,
 	.pcm_free	= camelot_pcm_free,
 };

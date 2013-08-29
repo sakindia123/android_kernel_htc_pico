@@ -100,7 +100,7 @@ int htc_wifi_bt_sleep_clk_ctl(int on, int id)
 	} else {
 		if (((id == ID_BT) && (CLK_OFF == htc_sleep_clk_state_wifi))
 			|| ((id == ID_WIFI)
-				&& (CLK_OFF == htc_sleep_clk_state_bt))) {
+			&& (CLK_OFF == htc_sleep_clk_state_bt))) {
 
 			err = set_wifi_bt_sleep_clk(CLK_OFF);
 

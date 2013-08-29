@@ -37,7 +37,7 @@
 }
 
 #define PCOM_VREG_SMP(_name, _id, _supply, _min_uV, _max_uV, _rise_time, \
-		_pulldown, _always_on, _boot_on, _apply_uV, _supply_uV) \
+	_pulldown, _always_on, _boot_on, _apply_uV, _supply_uV) \
 { \
 	.init_data = PCOM_VREG_INIT_DATA(_name, _supply, _min_uV, _max_uV, \
 			_always_on, _boot_on, _apply_uV, _supply_uV), \

@@ -112,7 +112,7 @@ static int imx_ssi_set_dai_fmt(struct snd_soc_dai *cpu_dai, unsigned int fmt)
 		break;
 	case SND_SOC_DAIFMT_DSP_A:
 		/* data on rising edge of bclk, frame high 1clk before data */
-		strcr |= SSI_STCR_TFSL | SSI_STCR_TXBIT0 | SSI_STCR_TEFS;
+		strcr |= SSI_STCR_TFSL | SSI_STCR_TEFS;
 		break;
 	}
 
@@ -388,10 +388,11 @@ static int imx_pcm_preallocate_dma_buffer(struct snd_pcm *pcm, int stream)
 
 static u64 imx_pcm_dmamask = DMA_BIT_MASK(32);
 
-int imx_pcm_new(struct snd_card *card, struct snd_soc_dai *dai,
-	struct snd_pcm *pcm)
+int imx_pcm_new(struct snd_soc_pcm_runtime *rtd)
 {
-
+	struct snd_card *card = rtd->card->snd_card;
+	struct snd_soc_dai *dai = rtd->cpu_dai;
+	struct snd_pcm *pcm = rtd->pcm;
 	int ret = 0;
 
 	if (!card->dev->dma_mask)

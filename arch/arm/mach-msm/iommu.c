@@ -671,8 +671,8 @@ fail:
 
 static phys_addr_t msm_iommu_get_pt_base_addr(struct iommu_domain *domain)
 {
-  struct msm_priv *priv = domain->priv;
-  return __pa(priv->pgtable);
+	struct msm_priv *priv = domain->priv;
+	return __pa(priv->pgtable);
 }
 
 static struct iommu_ops msm_iommu_ops = {
@@ -684,7 +684,7 @@ static struct iommu_ops msm_iommu_ops = {
 	.unmap = msm_iommu_unmap,
 	.iova_to_phys = msm_iommu_iova_to_phys,
 	.domain_has_cap = msm_iommu_domain_has_cap,
-        .get_pt_base_addr = msm_iommu_get_pt_base_addr
+    .get_pt_base_addr = msm_iommu_get_pt_base_addr
 };
 
 static int __init get_tex_class(int icp, int ocp, int mt, int nos)

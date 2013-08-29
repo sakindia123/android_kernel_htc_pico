@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2009 Google, Inc.
- * Copyright (C) 2010 HTC Corporation.
+ * Copyright (C) 2009-2011 HTC Corporation.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -64,7 +64,7 @@ static uint32_t pico_bt_on_table[] = {
 	GPIO_CFG(PICO_GPIO_BT_HOST_WAKE,
 				0,
 				GPIO_CFG_INPUT,
-				GPIO_CFG_PULL_UP,
+				GPIO_CFG_NO_PULL,
 				GPIO_CFG_4MA),
 
 	/* BT_CHIP_WAKE */
@@ -82,7 +82,7 @@ static uint32_t pico_bt_on_table[] = {
 				GPIO_CFG_4MA),
 
 	/* BT_SHUTDOWN_N */
-	GPIO_CFG(PICO_GPIO_BT_SD_N,
+	GPIO_CFG(PICO_GPIO_BT_SHUTDOWN_N,
 				0,
 				GPIO_CFG_OUTPUT,
 				GPIO_CFG_NO_PULL,
@@ -128,7 +128,7 @@ static uint32_t pico_bt_off_table[] = {
 				GPIO_CFG_4MA),
 
 	/* BT_SHUTDOWN_N */
-	GPIO_CFG(PICO_GPIO_BT_SD_N,
+	GPIO_CFG(PICO_GPIO_BT_SHUTDOWN_N,
 				0,
 				GPIO_CFG_OUTPUT,
 				GPIO_CFG_NO_PULL,
@@ -138,7 +138,7 @@ static uint32_t pico_bt_off_table[] = {
 	GPIO_CFG(PICO_GPIO_BT_HOST_WAKE,
 				0,
 				GPIO_CFG_INPUT,
-				GPIO_CFG_PULL_DOWN,
+				GPIO_CFG_PULL_UP,
 				GPIO_CFG_4MA),
 
 	/* BT_CHIP_WAKE */
@@ -152,7 +152,6 @@ static uint32_t pico_bt_off_table[] = {
 static void config_bt_table(uint32_t *table, int len)
 {
 	int n, rc;
-
 	for (n = 0; n < len; n++) {
 		rc = gpio_tlmm_config(table[n], GPIO_CFG_ENABLE);
 		if (rc) {
@@ -165,53 +164,58 @@ static void config_bt_table(uint32_t *table, int len)
 
 static void pico_config_bt_on(void)
 {
-	printk(KERN_INFO "[BT]-- R ON --\n");
+	printk(KERN_INFO "[BT]== R ON ==\n");
 
 	/* set bt on configuration*/
 	config_bt_table(pico_bt_on_table,
 				ARRAY_SIZE(pico_bt_on_table));
-	mdelay(5);
+	mdelay(2);
+
+	/* BT_RESET_N */
+	gpio_set_value(PICO_GPIO_BT_RESET_N, 0);
+	mdelay(1);
 
 	/* BT_SHUTDOWN_N */
-	gpio_set_value(PICO_GPIO_BT_SD_N, 1);
-	/*mdelay(2);*/
+	gpio_set_value(PICO_GPIO_BT_SHUTDOWN_N, 0);
+	mdelay(5);
 
 	/* BT_RESET_N */
 	gpio_set_value(PICO_GPIO_BT_RESET_N, 1);
-	mdelay(2);
+	mdelay(10);
+
+	/* BT_SHUTDOWN_N */
+	gpio_set_value(PICO_GPIO_BT_SHUTDOWN_N, 1);
+	mdelay(10);
+
 }
 
 static void pico_config_bt_off(void)
 {
-	printk(KERN_INFO "[BT]-- R OFF --\n");
-
 	/* BT_RESET_N */
 	gpio_set_value(PICO_GPIO_BT_RESET_N, 0);
-	/*mdelay(2);*/
+	mdelay(1);
 
 	/* BT_SHUTDOWN_N */
-	gpio_set_value(PICO_GPIO_BT_SD_N, 0);
-	mdelay(2);
+	gpio_set_value(PICO_GPIO_BT_SHUTDOWN_N, 0);
+	mdelay(1);
 
 	/* set bt off configuration*/
 	config_bt_table(pico_bt_off_table,
 				ARRAY_SIZE(pico_bt_off_table));
-	mdelay(5);
+	mdelay(2);
 
 	/* BT_RTS */
-	gpio_set_value(PICO_GPIO_BT_UART1_TX, 1);
+	gpio_set_value(PICO_GPIO_BT_UART1_RTS, 0);
 
 	/* BT_CTS */
-
-	/* BT_RX */
-
 	/* BT_TX */
 	gpio_set_value(PICO_GPIO_BT_UART1_TX, 0);
 
+	/* BT_RX */
 	/* BT_HOST_WAKE */
-
 	/* BT_CHIP_WAKE */
 	gpio_set_value(PICO_GPIO_BT_CHIP_WAKE, 0);
+	printk(KERN_INFO "[BT]== R OFF ==\n");
 }
 
 static int bluetooth_set_power(void *data, bool blocked)
@@ -232,15 +236,6 @@ static int pico_rfkill_probe(struct platform_device *pdev)
 {
 	int rc = 0;
 	bool default_state = true; /* off */
-
-#if 0 /* Is this necessary? */
-	rc = gpio_request(PICO_GPIO_BT_RESET_N, "bt_reset");
-	if (rc)
-		goto err_gpio_reset;
-	rc = gpio_request(PICO_GPIO_BT_SD_N, "bt_shutdown");
-	if (rc)
-		goto err_gpio_shutdown;
-#endif
 
 	/* always turn on clock */
 	htc_wifi_bt_sleep_clk_ctl(CLK_ON, ID_BT);
@@ -267,25 +262,13 @@ static int pico_rfkill_probe(struct platform_device *pdev)
 err_rfkill_reg:
 	rfkill_destroy(bt_rfk);
 err_rfkill_alloc:
-#if 0
-	gpio_free(PICO_GPIO_BT_SD_N);
-err_gpio_shutdown:
-	gpio_free(PICO_GPIO_BT_RESET_N);
-err_gpio_reset:
-#endif
 	return rc;
 }
 
 static int pico_rfkill_remove(struct platform_device *dev)
 {
 	rfkill_unregister(bt_rfk);
-	/*rfkill_free(bt_rfk);*/
 	rfkill_destroy(bt_rfk);
-#if 0
-	gpio_free(PICO_GPIO_BT_SD_N);
-	gpio_free(PICO_GPIO_BT_RESET_N);
-#endif
-
 	return 0;
 }
 

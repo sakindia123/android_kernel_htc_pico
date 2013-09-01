@@ -1,6 +1,10 @@
 VERSION = 3
 PATCHLEVEL = 0
+<<<<<<< HEAD
 SUBLEVEL = 93
+=======
+SUBLEVEL = 90
+>>>>>>> parent of 1018fb1... PATCH: applied linux kernel patch 3.0.90->91
 EXTRAVERSION =
 NAME = Sneaky Weasel
 

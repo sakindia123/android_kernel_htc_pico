@@ -2,6 +2,7 @@ VERSION = 3
 PATCHLEVEL = 0
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 SUBLEVEL = 93
 =======
 SUBLEVEL = 90
@@ -9,6 +10,9 @@ SUBLEVEL = 90
 =======
 SUBLEVEL = 91
 >>>>>>> parent of ee86fa8... PATCH: applied linux kernel patch 3.0.91->92
+=======
+SUBLEVEL = 92
+>>>>>>> parent of cb51a3d... PATCH: applied linux kernel patch 3.0.92->93
 EXTRAVERSION =
 NAME = Sneaky Weasel
 

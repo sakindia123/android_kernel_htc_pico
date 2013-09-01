@@ -1,10 +1,14 @@
 VERSION = 3
 PATCHLEVEL = 0
 <<<<<<< HEAD
+<<<<<<< HEAD
 SUBLEVEL = 93
 =======
 SUBLEVEL = 90
 >>>>>>> parent of 1018fb1... PATCH: applied linux kernel patch 3.0.90->91
+=======
+SUBLEVEL = 91
+>>>>>>> parent of ee86fa8... PATCH: applied linux kernel patch 3.0.91->92
 EXTRAVERSION =
 NAME = Sneaky Weasel
 

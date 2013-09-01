@@ -1,22 +1,6 @@
 VERSION = 3
 PATCHLEVEL = 0
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 SUBLEVEL = 93
-=======
-SUBLEVEL = 90
->>>>>>> parent of 1018fb1... PATCH: applied linux kernel patch 3.0.90->91
-=======
-SUBLEVEL = 91
->>>>>>> parent of ee86fa8... PATCH: applied linux kernel patch 3.0.91->92
-=======
-SUBLEVEL = 92
->>>>>>> parent of cb51a3d... PATCH: applied linux kernel patch 3.0.92->93
-=======
-SUBLEVEL = 93
->>>>>>> 4a95e94... Update to linux kernel 3.0.93
 EXTRAVERSION =
 NAME = Sneaky Weasel
 
@@ -209,13 +193,8 @@ SUBARCH := $(shell uname -m | sed -e s/i.86/i386/ -e s/sun4u/sparc64/ \
 # Note: Some architectures assign CROSS_COMPILE in their arch/*/Makefile
 SUBARCH := arm
 export KBUILD_BUILDHOST := $(SUBARCH)
-<<<<<<< HEAD
-ARCH		?= $(SUBARCH)
-CROSS_COMPILE	?= /home/niharg/Android_Toolchains/arm-eabi-4.7/bin/arm-eabi-
-=======
 ARCH		?= arm
 CROSS_COMPILE	?= arm-eabi-
->>>>>>> 4a95e94... Update to linux kernel 3.0.93
 
 # Architecture as present in compile.h
 UTS_MACHINE 	:= $(ARCH)
@@ -410,12 +389,8 @@ KBUILD_CFLAGS   := -Wno-trigraphs \
                    -ftree-vectorize -funsafe-math-optimizations \
                    -fsched-spec-load -mvectorize-with-neon-quad \
                    -fmodulo-sched -fmodulo-sched-allow-regmoves \
-<<<<<<< HEAD
-		   -fno-delete-null-pointer-checks
-=======
 				   -fno-delete-null-pointer-checks \
                     $(ARM_FLAGS)
->>>>>>> 4a95e94... Update to linux kernel 3.0.93
 
 KBUILD_AFLAGS_KERNEL :=
 KBUILD_CFLAGS_KERNEL :=

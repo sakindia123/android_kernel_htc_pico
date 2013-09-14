@@ -366,6 +366,18 @@ static struct clkctl_acpu_speed pll0_960_pll1_245_pll2_1200_pll4_800_25a[] = {
 	{ 0, 400000, ACPU_PLL_2, 2, 2, 50000, 3, 4, 122880 },
 	{ 1, 480000, ACPU_PLL_0, 4, 1, 60000, 3, 5, 122880 },
 	{ 1, 600000, ACPU_PLL_2, 2, 1, 75000, 3, 6, 200000 },
+#ifdef CONFIG_MSM_CPU_FREQ_OVERCLOCK
+	/* BEGIN overclocked frequencies */
+    { 1, 678000, ACPU_PLL_2, 2, 1, 80000, 3, 6, 200000 },
+    { 1, 722000, ACPU_PLL_2, 2, 1, 85000, 3, 6, 200000 },
+    { 1, 767000, ACPU_PLL_2, 2, 1, 92000, 3, 6, 200000 },
+    { 1, 800000, ACPU_PLL_2, 2, 1, 94000, 3, 6, 200000 },
+    { 1, 816000, ACPU_PLL_2, 2, 1, 96000, 3, 6, 200000 },
+    { 1, 828000, ACPU_PLL_2, 2, 1, 99000, 3, 7, 200000 },
+    { 1, 844000, ACPU_PLL_2, 2, 1, 102000, 3, 7, 200000 },
+	{ 1, 878000, ACPU_PLL_2, 2, 1, 104000, 3, 7, 200000 },
+    /* END overclocked frequencies */
+#endif
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, {0, 0, 0, 0}, {0, 0, 0, 0} }
 };
 
@@ -645,6 +657,12 @@ static void acpuclk_set_div(const struct clkctl_acpu_speed *hunt_s)
 	/* CLK_SEL_SRC1NO */
 	src_sel = reg_clksel & 1;
 
+	/* Perform the Overclock */
+	if(hunt_s->a11clk_khz > 600000) {
+                	writel(hunt_s->a11clk_khz/10340, PLLn_L_VAL(2)); /* This is where real Overclock happens */
+                	udelay(50);
+	}
+
 	/*
 	 * If the new clock divider is higher than the previous, then
 	 * program the divider before switching the clock
@@ -665,6 +683,12 @@ static void acpuclk_set_div(const struct clkctl_acpu_speed *hunt_s)
 	/* Program clock source selection */
 	reg_clksel ^= 1;
 	writel_relaxed(reg_clksel, A11S_CLK_SEL_ADDR);
+
+	/* Restore from Overclock */
+	if(hunt_s->a11clk_khz <= 600000) {
+                writel(PLL_1200_MHZ, PLLn_L_VAL(2)); /* This is for restoring original speed of PLL2 when we are not over clocking. */
+                udelay(50);
+        }
 
 	/*
 	 * If the new clock divider is lower than the previous, then

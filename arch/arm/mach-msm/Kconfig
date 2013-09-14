@@ -1564,31 +1564,40 @@ config MSM_DALRPC_TEST
 if CPU_FREQ_MSM
 
 config MSM_CPU_FREQ_SET_MIN_MAX
-	bool "Set Min/Max CPU frequencies."
-	default n
-	help
-	  Allow setting min and max CPU frequencies. Sysfs can be used
-	  to override these values.
+        bool "Set Min/Max CPU frequencies."
+        default n
+        help
+          Allow setting min and max CPU frequencies. Sysfs can be used
+          to override these values.
 
 config MSM_CPU_FREQ_MAX
-	int "Max CPU Frequency"
-	depends on MSM_CPU_FREQ_SET_MIN_MAX
-	default 384000
-
-config MSM_CPU_FREQ_MIN
-	int "Min CPU Frequency"
-	depends on MSM_CPU_FREQ_SET_MIN_MAX
-	default 245760
-
-endif # CPU_FREQ_MSM
-
-config MSM_CPU_FREQ_ONDEMAND_MAX
-        int "Max"
+        int "Max CPU Frequency"
+        depends on MSM_CPU_FREQ_SET_MIN_MAX
         default 384000
 
-config MSM_CPU_FREQ_ONDEMAND_MIN
-        int "Min"
+config MSM_CPU_FREQ_MIN
+        int "Min CPU Frequency"
+        depends on MSM_CPU_FREQ_SET_MIN_MAX
         default 245760
+
+config MSM_CPU_FREQ_ONDEMAND_MAX
+	int "Max"
+	default 384000
+
+config MSM_CPU_FREQ_ONDEMAND_MIN
+	int "Min"
+	default 245760
+
+config MSM_CPU_FREQ_OVERCLOCK
+	bool "Overclock the CPU frequency (Explorer/Pico)"
+	depends on MACH_PICO
+	depends on MSM_CPU_FREQ_SET_MIN_MAX
+	default n
+	help
+	  Adds a number of overclocked frequencies for the 600MHz HTC Explorer/Pico.
+	  If unsure, choose N.
+
+endif # CPU_FREQ_MSM
 
 config MSM_CPU_AVS
 	bool "Enable software controlled Adaptive Voltage Scaling (AVS)"

@@ -644,16 +644,6 @@ config MSM_SMD_PKT
 	  Enables userspace clients to read and write to some packet SMD
 	  ports via device interface for MSM chipset.
 
-config MSM_ROTATOR_LEGACY
-        tristate "Legacy MSM Offline Image Rotator Driver"
-        depends on MSM_ROTATOR
-        default n if ARCH_MSM8960
-        default n if ARCH_MSM8X60
-        default n if ARCH_MSM7X30
-        help
-          As a temporally workaround, this option provides backward support for
-          gingerbread, honeycomb on non-8960 platform.
-
 config MSM_ROTATOR
         tristate "MSM Offline Image Rotator Driver"
         depends on (ARCH_MSM7X30 || ARCH_MSM8X60 || ARCH_MSM8960) && ANDROID_PMEM

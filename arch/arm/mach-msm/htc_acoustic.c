@@ -299,8 +299,9 @@ static long acoustic_ioctl(struct file *file, unsigned int cmd,
 
 	switch (cmd) {
 	case ACOUSTIC_ARM11_DONE:
+#if 0
 		pr_aud_info("ioctl ACOUSTIC_ARM11_DONE called %d.\n", current->pid);
-
+#endif
 #ifdef CONFIG_OUTER_CACHE
 		outer_flush_range(htc_acoustic_phy_addr,
 			htc_acoustic_phy_addr + HTC_ACOUSTIC_TABLE_SIZE);
@@ -316,7 +317,9 @@ static long acoustic_ioctl(struct file *file, unsigned int cmd,
 			pr_aud_err("ONCRPC_ACOUSTIC_INIT_PROC failed %d.\n", rc);
 			return reply_value;
 		} else {
+#if 0
 			pr_aud_info("ONCRPC_ACOUSTIC_INIT_PROC success.\n");
+#endif
 			return 0;
 		}
 		break;

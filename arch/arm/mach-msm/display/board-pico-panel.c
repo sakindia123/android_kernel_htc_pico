@@ -99,7 +99,7 @@ static void pico_panel_power(int on)
 static int mipi_panel_power(int on)
 {
 	int flag_on = !!on;
-	static int mipi_power_save_on;
+	static int mipi_power_save_on = 1;
 
 	if (mipi_power_save_on == flag_on)
 		return 0;
@@ -197,6 +197,8 @@ static int msm_fb_detect_panel(const char *name)
 
 static struct msm_fb_platform_data msm_fb_pdata = {
 	.detect_client = msm_fb_detect_panel,
+	.width = 48,
+	.height = 72,
 };
 
 static struct resource msm_fb_resources[] = {

@@ -2290,7 +2290,8 @@ void mdp_set_scale(MDPIBUF *iBuf,
 						    MDP_PR_SCALE_POINT4_POINT6;
 					} else if ((!use_pr)
 						   && (mdp_curr_down_scale_x !=
-						       MDP_BC_SCALE_POINT4_POINT6)) {
+						       MDP_BC_SCALE_POINT4_POINT6))
+					{
 						mdp_load_bc_downscale_table_x_point4TOpoint6
 						    ();
 						mdp_curr_down_scale_x =
@@ -2306,7 +2307,8 @@ void mdp_set_scale(MDPIBUF *iBuf,
 						    MDP_PR_SCALE_POINT2_POINT4;
 					} else if ((!use_pr)
 						   && (mdp_curr_down_scale_x !=
-						       MDP_BC_SCALE_POINT2_POINT4)) {
+						       MDP_BC_SCALE_POINT2_POINT4))
+					{
 						mdp_load_bc_downscale_table_x_point2TOpoint4
 						    ();
 						mdp_curr_down_scale_x =
@@ -2346,7 +2348,8 @@ void mdp_set_scale(MDPIBUF *iBuf,
 						    MDP_PR_SCALE_POINT6_POINT8;
 					} else if ((!use_pr)
 						   && (mdp_curr_down_scale_y !=
-						       MDP_BC_SCALE_POINT6_POINT8)) {
+						       MDP_BC_SCALE_POINT6_POINT8))
+					{
 						mdp_load_bc_downscale_table_y_point6TOpoint8
 						    ();
 						mdp_curr_down_scale_y =
@@ -2364,7 +2367,8 @@ void mdp_set_scale(MDPIBUF *iBuf,
 						    MDP_PR_SCALE_POINT4_POINT6;
 					} else if ((!use_pr)
 						   && (mdp_curr_down_scale_y !=
-						       MDP_BC_SCALE_POINT4_POINT6)) {
+						       MDP_BC_SCALE_POINT4_POINT6))
+					{
 						mdp_load_bc_downscale_table_y_point4TOpoint6
 						    ();
 						mdp_curr_down_scale_y =
@@ -2374,13 +2378,18 @@ void mdp_set_scale(MDPIBUF *iBuf,
 					if ((use_pr)
 					    && (mdp_curr_down_scale_y !=
 						MDP_PR_SCALE_POINT2_POINT4)) {
-						mdp_load_pr_downscale_table_y_point2TOpoint4();
-						mdp_curr_down_scale_y = MDP_PR_SCALE_POINT2_POINT4;
+						mdp_load_pr_downscale_table_y_point2TOpoint4
+						    ();
+						mdp_curr_down_scale_y =
+						    MDP_PR_SCALE_POINT2_POINT4;
 					} else if ((!use_pr)
 						   && (mdp_curr_down_scale_y !=
-						       MDP_BC_SCALE_POINT2_POINT4)) {
-						mdp_load_bc_downscale_table_y_point2TOpoint4();
-						mdp_curr_down_scale_y = MDP_BC_SCALE_POINT2_POINT4;
+						       MDP_BC_SCALE_POINT2_POINT4))
+					{
+						mdp_load_bc_downscale_table_y_point2TOpoint4
+						    ();
+						mdp_curr_down_scale_y =
+						    MDP_BC_SCALE_POINT2_POINT4;
 					}
 				}
 			}
@@ -2412,8 +2421,11 @@ void mdp_adjust_start_addr(uint8 **src0,
 			   uint32 width,
 			   uint32 height, int bpp, MDPIBUF *iBuf, int layer)
 {
-	*src0 += (x + y * width) * bpp;
-
+	if (iBuf->mdpImg.imgType == MDP_Y_CBCR_H2V2_ADRENO && layer == 0)
+		*src0 += (x + y * ALIGN(width, 32)) * bpp;
+	else
+		*src0 += (x + y * width) * bpp;
+	
 	/* if it's dest/bg buffer, we need to adjust it for rotation */
 	if (layer != 0)
 		*src0 = mdp_adjust_rot_addr(iBuf, *src0, 0);
@@ -2423,9 +2435,23 @@ void mdp_adjust_start_addr(uint8 **src0,
 		 * MDP_Y_CBCR_H2V2/MDP_Y_CRCB_H2V2 cosite for now
 		 * we need to shift x direction same as y dir for offsite
 		 */
-		*src1 +=
-		    ((x / h_slice) * h_slice +
-		     ((y == 0) ? 0 : ((y + 1) / v_slice - 1) * width)) * bpp;
+		if (iBuf->mdpImg.imgType == MDP_Y_CBCR_H2V2_ADRENO
+							&& layer == 0) {
+			if (v_slice == 1)
+				*src1 += ((x / h_slice) * h_slice + ((y == 0)
+				? 0 : (y * (ALIGN(width/2, 32) * 2)))) * bpp;
+			else
+				*src1 += ((x / h_slice) * h_slice + ((y == 0)
+				? 0 : (((y + 1) / v_slice) *
+				(ALIGN(width/2, 32) * 2)))) * bpp;
+		} else {
+			if (v_slice == 1)
+				*src1 += ((x / h_slice) * h_slice + ((y == 0)
+				? 0 : (y * width))) * bpp;
+			else
+				*src1 += ((x / h_slice) * h_slice + ((y == 0)
+				? 0 : ((y + 1) / v_slice) * width)) * bpp;
+		}
 
 		/* if it's dest/bg buffer, we need to adjust it for rotation */
 		if (layer != 0)
@@ -2482,6 +2508,7 @@ void mdp_set_blend_attr(MDPIBUF *iBuf,
 				*pppop_reg_ptr |= PPP_OP_ROT_ON |
 						  PPP_OP_BLEND_ON |
 						  PPP_OP_BLEND_SRCPIXEL_ALPHA;
+				outpdw(MDP_BASE + 0x70010, 0);
 			} else {
 				if ((iBuf->mdpImg.mdpOp & MDPOP_ALPHAB)
 					&& (iBuf->mdpImg.alpha == 0xff)) {
@@ -2500,6 +2527,7 @@ void mdp_set_blend_attr(MDPIBUF *iBuf,
 				if (iBuf->mdpImg.mdpOp & MDPOP_TRANSP)
 					*pppop_reg_ptr |=
 						PPP_BLEND_CALPHA_TRNASP;
+				outpdw(MDP_BASE + 0x70010, 0);
 			}
 	} else {
 		if (perPixelAlpha) {

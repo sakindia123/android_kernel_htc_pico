@@ -91,7 +91,7 @@ static DEFINE_MUTEX(audpp_dec_lock);
 
 #define MAX_EVENT_CALLBACK_CLIENTS 	1
 
-#define AUDPP_CONCURRENCY_DEFAULT 6	/* enable LPA for qdsp5 */
+#define AUDPP_CONCURRENCY_DEFAULT 6	/* All non tunnel mode */
 #define AUDPP_MAX_DECODER_CNT 5
 #define AUDPP_CODEC_MASK 0x000000FF
 #define AUDPP_MODE_MASK 0x00000F00

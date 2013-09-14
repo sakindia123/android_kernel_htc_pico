@@ -37,21 +37,19 @@ int __init pico_wifi_init(void);
 #define MSM_RAM_CONSOLE_BASE    0x2FD00000
 #define MSM_RAM_CONSOLE_SIZE    MSM_HTC_RAM_CONSOLE_SIZE
 
-#define MSM_PMEM_MDP_SIZE       0x1400000
-#define MSM_PMEM_ADSP_SIZE      0x00D00000
+#define MSM_PMEM_MDP_SIZE       0x01400000
+#define MSM_PMEM_ADSP_SIZE      0x00C00000
 
 #define PICO_GPIO_TO_INT(x)           (x+64) /* from gpio_to_irq */
 
-#define PICO_GPIO_USB_ID          (19)
-#define PICO_POWER_KEY                (20)
-#define PICO_GPIO_PS_HOLD         (25)
-#define PICO_GPIO_WIFI_IRQ            (29)
-//#define PICO_GPIO_RESET_BTN_N         (36)
-#define PICO_GPIO_SDMC_CD_N           (38)
-#define PICO_GPIO_UP_INT_N            (39)
-#define PICO_GPIO_CHG_INT		(40)
-#define PICO_GPIO_VOL_DOWN_XB         (48)
-#define PICO_GPIO_VOL_DOWN            (49)
+#define PICO_GPIO_USB_ID               (19)
+#define PICO_POWER_KEY                 (20)
+#define PICO_GPIO_PS_HOLD              (25)
+#define PICO_GPIO_WIFI_IRQ             (29)
+#define PICO_GPIO_SDMC_CD_N            (38)
+#define PICO_GPIO_CHG_INT	           (40)
+#define PICO_GPIO_VOL_DOWN             (48)
+#define PICO_GPIO_VOL_UP               (92)
 
 /* Camera I2C */
 /* Camera */
@@ -92,10 +90,7 @@ int __init pico_wifi_init(void);
 
 #define PICO_GPIO_UART3_RX            (86)
 #define PICO_GPIO_UART3_TX            (87)
-#define PICO_GPIO_VOL_UP              (92)
 #define PICO_GPIO_WIFI_SHUTDOWN_N       (108)
-//#define PICO_GPIO_V_USBPHY_3V3_EN     (109)
-//#define PICO_GPIO_VIBRATOR_ON         (116)
 
 /* Compass  */
 #define PICO_GPIO_GSENSORS_INT         (39)
@@ -142,8 +137,8 @@ int __init pico_wifi_init(void);
 #define PICO_GPIO_LCD_ID1             (35)
 #define PICO_GPIO_MDDI_TE             (97)
 #define PICO_GPIO_LCD_RST_N           (118)
-#define PICO_GPIO_LCM_1v8_EN             (5)
-#define PICO_GPIO_LCM_2v85_EN             (6)
+#define PICO_GPIO_LCM_1v8_EN          (5)
+#define PICO_GPIO_LCM_2v85_EN         (6)
 
 /* NFC */
 #define PICO_GPIO_NFC_VEN	(8)

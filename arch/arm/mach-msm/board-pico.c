@@ -80,7 +80,7 @@
 #include <linux/msm_audio.h>
 
 #ifdef CONFIG_CODEC_AIC3254
-#include <linux/i2c/aic3254.h>
+#include <linux/spi_aic3254.h>
 #endif
 
 #ifdef CONFIG_BT
@@ -95,7 +95,7 @@ int htc_get_usb_accessory_adc_level(uint32_t *buffer);
 static int config_gpio_table(uint32_t *table, int len);
 
 #define PMEM_KERNEL_EBI1_SIZE	0x3A000
-#define MSM_PMEM_AUDIO_SIZE	0x1200000
+#define MSM_PMEM_AUDIO_SIZE	0x5B000
 
 enum {
 	GPIO_EXPANDER_IRQ_BASE	= NR_MSM_IRQS + NR_GPIO_IRQS,
@@ -213,7 +213,6 @@ static struct platform_device htc_headset_pmic = {
 	},
 };
 
-
 /* HTC_HEADSET_MGR Driver */
 static struct platform_device *headset_devices[] = {
 	&htc_headset_pmic,
@@ -264,6 +263,7 @@ static struct platform_device htc_headset_mgr = {
 		.platform_data	= &htc_headset_mgr_data,
 	},
 };
+
 
 /* HEADSET DRIVER END */
 
@@ -1049,9 +1049,9 @@ early_param("pmem_adsp_size", pmem_adsp_size_setup);
 static struct snd_endpoint snd_endpoints_list[] = {
 	SND(HANDSET, 0),
 	SND(SPEAKER, 1),
-	SND(HEADSET,2),
+	SND(HEADSET, 2),
 	SND(BT, 3),
-	SND(CARKIT, 3),
+	SND(CARKIT, 4),
 	SND(TTY_FULL, 5),
 	SND(TTY_HEADSET, 5),
 	SND(TTY_VCO, 6),
@@ -1060,8 +1060,10 @@ static struct snd_endpoint snd_endpoints_list[] = {
 	SND(FM_HEADSET, 9),
 	SND(HEADSET_AND_SPEAKER, 10),
 	SND(STEREO_HEADSET_AND_SPEAKER, 10),
+	SND(FM_SPEAKER, 11),
 	SND(BT_EC_OFF, 44),
 	SND(CURRENT, 256),
+
 };
 #undef SND
 
@@ -1145,8 +1147,7 @@ static unsigned int dec_concurrency_table[] = {
 	(DEC4_FORMAT),
 
 	/* Concurrency 6 */
-	(DEC0_FORMAT|(1<<MSM_ADSP_MODE_TUNNEL)|
-			(1<<MSM_ADSP_MODE_NONTUNNEL)|(1<<MSM_ADSP_OP_DM)),
+	(DEC0_FORMAT|(1<<MSM_ADSP_MODE_NONTUNNEL)|(1<<MSM_ADSP_OP_DM)),
 	0, 0, 0, 0,
 
 	/* Concurrency 7 */
@@ -1239,25 +1240,25 @@ static struct platform_device msm_batt_device = {
 
 #ifdef CONFIG_MSM_CAMERA
 static uint32_t camera_off_gpio_table[] = {
-// HTC_START
-// sleep status
+	/* HTC_START */
+	/* sleep status */
 	GPIO_CFG(PICO_GPIO_CAMERA_SDA,  1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
 	GPIO_CFG(PICO_GPIO_CAMERA_SCL,   1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
 	GPIO_CFG(PICO_GPIO_CAMERA_RESET,     0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
 	GPIO_CFG(PICO_GPIO_CAMERA_STANDBY,   0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
 	GPIO_CFG(PICO_GPIO_CAMERA_MCLK,      0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_16MA),
-// HTC_END
+	/* HTC_END */
 };
 
 static uint32_t camera_on_gpio_table[] = {
-// HTC_START
-// sleep status
+	/* HTC_START */
+	/* sleep status */
 	GPIO_CFG(PICO_GPIO_CAMERA_SDA,  1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
 	GPIO_CFG(PICO_GPIO_CAMERA_SCL,   1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
 	GPIO_CFG(PICO_GPIO_CAMERA_RESET,     0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
 	GPIO_CFG(PICO_GPIO_CAMERA_STANDBY,   0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
 	GPIO_CFG(PICO_GPIO_CAMERA_MCLK,      1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_16MA),
-// HTC_END
+	/* HTC_END */
 };
 
 //HTC_START
@@ -1480,7 +1481,7 @@ static int config_camera_on_gpios_rear(void)
 {
 	int rc = 0;
 
-	if (machine_is_msm7x27a_ffa())
+	if (machine_is_msm7x27a_ffa() || machine_is_msm7625a_ffa())
 		msm_camera_vreg_config(1);
 
 //HTC_START
@@ -1508,7 +1509,7 @@ static int config_camera_on_gpios_rear(void)
 
 static void config_camera_off_gpios_rear(void)
 {
-	if (machine_is_msm7x27a_ffa())
+	if (machine_is_msm7x27a_ffa() || machine_is_msm7625a_ffa())
 		msm_camera_vreg_config(0);
 
 //HTC_START
@@ -1540,20 +1541,19 @@ struct msm_camera_device_platform_data msm_camera_device_data_rear = {
 static struct msm_camera_sensor_platform_info mt9t013_sensor_7627a_info = {
 	.mount_angle = 0
 };
-// PG-POWER_SEQ-00-{
+
 static struct msm_camera_sensor_flash_data flash_mt9t013 = {
 	.flash_type = MSM_CAMERA_FLASH_NONE,
+
 };
-// PG-POWER_SEQ-00-}
+
 static struct msm_camera_sensor_info msm_camera_sensor_mt9t013_data = {
 	.sensor_name    = "mt9t013",
-	.sensor_reset   = 125,
-	.sensor_pwd     = 126,
-	.mclk           = 15, // PG-POWER_SEQ-00
-//	.vcm_pwd        = 1,
-//	.vcm_enable     = 0,
+	.sensor_reset   = PICO_GPIO_CAMERA_RESET,
+	.sensor_pwd     = PICO_GPIO_CAMERA_STANDBY,
+	.mclk           = PICO_GPIO_CAMERA_MCLK,
 	.pdata          = &msm_camera_device_data_rear,
-	.flash_data     = &flash_mt9t013, // PG-POWER_SEQ-00
+	.flash_data     = &flash_mt9t013,
 	.sensor_platform_info   = &mt9t013_sensor_7627a_info,
 	.csi_if         = 1
 };

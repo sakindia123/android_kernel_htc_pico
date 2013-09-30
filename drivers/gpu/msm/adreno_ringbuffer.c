@@ -498,6 +498,12 @@ adreno_ringbuffer_addcmds(struct adreno_ringbuffer *rb,
 	/* 2 dwords to store the start of command sequence */
 	total_sizedwords += 2;
 
+        if (adreno_is_a2xx(adreno_dev))
+     		total_sizedwords += 2; /* CP_WAIT_FOR_IDLE */
+  
+  	if (adreno_is_a20x(adreno_dev))
+    		total_sizedwords += 2; /* CACHE_FLUSH */
+
 	if (adreno_is_a3xx(adreno_dev))
 		total_sizedwords += 7;
 
@@ -557,6 +563,16 @@ adreno_ringbuffer_addcmds(struct adreno_ringbuffer *rb,
 	}
 	timestamp = rb->timestamp[context_id];
 
+	/* HW Workaround for MMU Page fault
+	* due to memory getting free early before
+	* GPU completes it.
+	*/
+	if (adreno_is_a2xx(adreno_dev)) {
+		GSL_RB_WRITE(ringcmds, rcmd_gpu,
+			cp_type3_packet(CP_WAIT_FOR_IDLE, 1));
+		GSL_RB_WRITE(ringcmds, rcmd_gpu, 0x00);
+	}
+
 	/* scratchpad ts for recovery */
 	GSL_RB_WRITE(ringcmds, rcmd_gpu, cp_type0_packet(REG_CP_TIMESTAMP, 1));
 	GSL_RB_WRITE(ringcmds, rcmd_gpu, rb->timestamp[KGSL_MEMSTORE_GLOBAL]);
@@ -607,6 +623,12 @@ adreno_ringbuffer_addcmds(struct adreno_ringbuffer *rb,
 				      eoptimestamp)));
 		GSL_RB_WRITE(ringcmds, rcmd_gpu,
 			rb->timestamp[KGSL_MEMSTORE_GLOBAL]);
+	}
+
+	if (adreno_is_a20x(adreno_dev)) {
+		GSL_RB_WRITE(ringcmds, rcmd_gpu,
+			cp_type3_packet(CP_EVENT_WRITE, 1));
+		GSL_RB_WRITE(ringcmds, rcmd_gpu, CACHE_FLUSH);
 	}
 
 	if (!(flags & KGSL_CMD_FLAGS_NO_TS_CMP)) {

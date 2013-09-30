@@ -72,6 +72,7 @@
 #define AUDIO_SET_RX_MUTE              _IOW(AUDIO_IOCTL_MAGIC, 42, unsigned)
 #define AUDIO_GET_BITSTREAM_ERROR_INFO _IOR(AUDIO_IOCTL_MAGIC, 42, \
 			       struct msm_audio_bitstream_error_info)
+#define AUDIO_SET_SRS_TRUMEDIA_PARAM _IOW(AUDIO_IOCTL_MAGIC, 43, unsigned)
 /* Qualcomm extensions */
 #define AUDIO_SET_STREAM_CONFIG   _IOW(AUDIO_IOCTL_MAGIC, 80, \
 				struct msm_audio_stream_config)
@@ -141,6 +142,8 @@
 #define IIR_ENABLE		0x0004
 #define QCONCERT_PLUS_ENABLE	0x0008
 #define MBADRC_ENABLE		0x0010
+#define SRS_ENABLE		0x0020
+#define SRS_DISABLE	0x0040
 
 #define AGC_ENABLE		0x0001
 #define NS_ENABLE		0x0002

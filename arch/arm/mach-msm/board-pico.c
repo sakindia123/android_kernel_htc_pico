@@ -49,9 +49,7 @@
 #include <linux/power_supply.h>
 #include <linux/regulator/consumer.h>
 #include <mach/rpc_pmapp.h>
-#ifdef CONFIG_BATTERY_MSM
 #include <mach/msm_battery.h>
-#endif
 #include <mach/htc_headset_mgr.h>
 #include <mach/htc_headset_gpio.h>
 #include <mach/htc_headset_pmic.h>
@@ -95,7 +93,7 @@ int htc_get_usb_accessory_adc_level(uint32_t *buffer);
 static int config_gpio_table(uint32_t *table, int len);
 
 #define PMEM_KERNEL_EBI1_SIZE	0x3A000
-#define MSM_PMEM_AUDIO_SIZE	0x5B000
+#define MSM_PMEM_AUDIO_SIZE  0x1F4000 //0x5B000
 
 enum {
 	GPIO_EXPANDER_IRQ_BASE	= NR_MSM_IRQS + NR_GPIO_IRQS,
@@ -263,7 +261,6 @@ static struct platform_device htc_headset_mgr = {
 		.platform_data	= &htc_headset_mgr_data,
 	},
 };
-
 
 /* HEADSET DRIVER END */
 
@@ -1147,7 +1144,8 @@ static unsigned int dec_concurrency_table[] = {
 	(DEC4_FORMAT),
 
 	/* Concurrency 6 */
-	(DEC0_FORMAT|(1<<MSM_ADSP_MODE_NONTUNNEL)|(1<<MSM_ADSP_OP_DM)),
+	(DEC0_FORMAT|(1<<MSM_ADSP_MODE_TUNNEL)|
+			(1<<MSM_ADSP_MODE_NONTUNNEL)|(1<<MSM_ADSP_OP_DM)),
 	0, 0, 0, 0,
 
 	/* Concurrency 7 */
@@ -1211,7 +1209,6 @@ static struct platform_device android_pmem_device = {
 	.dev = { .platform_data = &android_pmem_pdata },
 };
 
-#ifdef CONFIG_BATTERY_MSM
 static u32 msm_calculate_batt_capacity(u32 current_voltage);
 
 static struct msm_psy_batt_pdata msm_psy_batt_data = {
@@ -1236,7 +1233,6 @@ static struct platform_device msm_batt_device = {
 	.id                 = -1,
 	.dev.platform_data  = &msm_psy_batt_data,
 };
-#endif
 
 #ifdef CONFIG_MSM_CAMERA
 static uint32_t camera_off_gpio_table[] = {
@@ -1609,9 +1605,7 @@ static struct platform_device *pico_devices[] __initdata = {
 	&android_pmem_audio_device,
 	&msm_device_snd,
 	&msm_device_adspdec,
-#ifdef CONFIG_BATTERY_MSM
 	&msm_batt_device,
-#endif
 	&htc_headset_mgr,
 	&htc_drm,
 	&msm_kgsl_3d0,

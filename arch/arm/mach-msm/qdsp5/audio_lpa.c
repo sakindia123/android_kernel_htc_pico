@@ -1,3 +1,4 @@
+
 /* audio_lpa.c - low power audio driver
  *
  * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
@@ -45,6 +46,7 @@
 #include <mach/msm_adsp.h>
 #include <mach/iommu.h>
 #include <mach/iommu_domains.h>
+#include <mach/msm_subsystem_map.h>
 #include <mach/qdsp5/qdsp5audppcmdi.h>
 #include <mach/qdsp5/qdsp5audppmsg.h>
 #include <mach/qdsp5/qdsp5audplaycmdi.h>
@@ -552,9 +554,7 @@ static void audpcm_async_flush(struct audio *audio)
 	struct audpcm_buffer_node *buf_node;
 	struct list_head *ptr, *next;
 	union msm_audio_event_payload payload;
-	unsigned long flags;
 
-	spin_lock_irqsave(&audio->dsp_lock, flags);
 	MM_DBG("\n"); /* Macro prints the file name and function */
 	list_for_each_safe(ptr, next, &audio->out_queue) {
 		buf_node = list_entry(ptr, struct audpcm_buffer_node, list);
@@ -567,7 +567,6 @@ static void audpcm_async_flush(struct audio *audio)
 	audio->drv_status &= ~ADRV_STATUS_OBUF_GIVEN;
 	audio->out_needed = 0;
 	atomic_set(&audio->out_bytes, 0);
-	spin_unlock_irqrestore(&audio->dsp_lock, flags);
 }
 static void audio_ioport_reset(struct audio *audio)
 {
@@ -1223,7 +1222,7 @@ static int audio_release(struct inode *inode, struct file *file)
 	audpcm_reset_event_queue(audio);
 	MM_DBG("pmem area = 0x%8x\n", (unsigned int)audio->data);
 	if (audio->data) {
-		iounmap(audio->map_v_write);
+		msm_subsystem_unmap_buffer(audio->map_v_write);
 		free_contiguous_memory_by_paddr(audio->phys);
 	}
 	mutex_unlock(&audio->lock);

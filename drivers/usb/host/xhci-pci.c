@@ -128,8 +128,6 @@ static int xhci_pci_setup(struct usb_hcd *hcd)
 				pdev->revision);
 		xhci->quirks |= XHCI_TRUST_TX_LENGTH;
 	}
-	if (pdev->vendor == PCI_VENDOR_ID_VIA)
-		xhci->quirks |= XHCI_RESET_ON_RESUME;
 
 	if (pdev->vendor == PCI_VENDOR_ID_NEC)
 		xhci->quirks |= XHCI_NEC_HOST;

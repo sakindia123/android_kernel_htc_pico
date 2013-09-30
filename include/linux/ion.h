@@ -221,8 +221,8 @@ struct ion_co_heap_pdata {
  */
 struct ion_platform_data {
 	int nr;
-	void (*request_region)(void *);
-	void (*release_region)(void *);
+	int (*request_region)(void *);
+	int (*release_region)(void *);
 	void *(*setup_region)(void);
 	struct ion_platform_heap heaps[];
 };

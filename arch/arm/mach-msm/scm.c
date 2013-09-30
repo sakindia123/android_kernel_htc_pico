@@ -24,7 +24,7 @@
 
 #include <asm/cacheflush.h>
 
-#include "scm.h"
+#include <mach/scm.h>
 
 /* Cache line size for msm8x60 */
 #define CACHELINESIZE 32

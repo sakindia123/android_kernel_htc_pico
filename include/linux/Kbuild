@@ -432,3 +432,6 @@ header-y += sync.h
 header-y += sw_sync.h
 header-y += spi_aic3254.h
 header-y += tpa2051d3.h
+header-y += tps65200.h
+header-y += bma250.h
+header-y += cm3628.h

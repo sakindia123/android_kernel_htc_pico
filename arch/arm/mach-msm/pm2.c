@@ -45,7 +45,6 @@
 #ifdef CONFIG_VFP
 #include <asm/vfp.h>
 #endif
-#include <mach/htc_util.h>
 
 #ifdef CONFIG_MSM_MEMORY_LOW_POWER_MODE_SUSPEND_DEEP_POWER_DOWN
 #include <mach/msm_migrate_pages.h>

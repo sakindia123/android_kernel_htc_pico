@@ -1134,15 +1134,6 @@ void ext4_da_update_reserve_space(struct inode *inode,
 		used = ei->i_reserved_data_blocks;
 	}
 
-	if (unlikely(ei->i_allocated_meta_blocks >
-		ei->i_reserved_meta_blocks)) {
-		ext4_msg(inode->i_sb, KERN_NOTICE, "%s: ino %lu, "
-			"meta blocks %d with only %d reserved meta blocks\n",
-			__func__, inode->i_ino, ei->i_allocated_meta_blocks,
-			ei->i_reserved_meta_blocks);
-		ei->i_allocated_meta_blocks = ei->i_reserved_meta_blocks;
-	}
-
 	if (unlikely(ei->i_allocated_meta_blocks > ei->i_reserved_meta_blocks)) {
 		ext4_msg(inode->i_sb, KERN_NOTICE, "%s: ino %lu, allocated %d "
 			 "with only %d reserved metadata blocks\n", __func__,
@@ -2955,10 +2946,6 @@ static int ext4_da_writepages(struct address_space *mapping,
 	 * the stack trace.
 	 */
 	if (unlikely(sbi->s_mount_flags & EXT4_MF_FS_ABORTED))
-		return -EROFS;
-
-	/* return immediately if filesystem is mounted read-only */
-	if (unlikely(inode->i_sb->s_flags & MS_RDONLY))
 		return -EROFS;
 
 	if (wbc->range_start == 0 && wbc->range_end == LLONG_MAX)

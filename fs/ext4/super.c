@@ -48,7 +48,6 @@
 #endif
 
 #include "ext4.h"
-#include "ext4_extents.h"
 #include "ext4_jbd2.h"
 #include "xattr.h"
 #include "acl.h"
@@ -1081,6 +1080,8 @@ static int ext4_show_options(struct seq_file *seq, struct vfsmount *vfs)
 		seq_puts(seq, ",nouid32");
 	if (test_opt(sb, DEBUG) && !(def_mount_opts & EXT4_DEFM_DEBUG))
 		seq_puts(seq, ",debug");
+	if (test_opt(sb, OLDALLOC))
+		seq_puts(seq, ",oldalloc");
 #ifdef CONFIG_EXT4_FS_XATTR
 	if (test_opt(sb, XATTR_USER))
 		seq_puts(seq, ",user_xattr");
@@ -1588,12 +1589,10 @@ static int parse_options(char *options, struct super_block *sb,
 			set_opt(sb, DEBUG);
 			break;
 		case Opt_oldalloc:
-			ext4_msg(sb, KERN_WARNING,
-				 "Ignoring deprecated oldalloc option");
+			set_opt(sb, OLDALLOC);
 			break;
 		case Opt_orlov:
-			ext4_msg(sb, KERN_WARNING,
-				 "Ignoring deprecated orlov option");
+			clear_opt(sb, OLDALLOC);
 			break;
 #ifdef CONFIG_EXT4_FS_XATTR
 		case Opt_user_xattr:
@@ -3671,7 +3670,8 @@ no_journal:
 		goto failed_mount4;
 	}
 
-	ext4_setup_super(sb, es, sb->s_flags & MS_RDONLY);
+	if (ext4_setup_super(sb, es, sb->s_flags & MS_RDONLY))
+		sb->s_flags |= MS_RDONLY;
 
 	/* determine the minimum size of new large inodes, if present */
 	if (sbi->s_inode_size > EXT4_GOOD_OLD_INODE_SIZE) {

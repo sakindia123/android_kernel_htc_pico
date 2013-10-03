@@ -83,6 +83,7 @@ struct htc_battery_platform_data {
 	int (*func_is_support_super_charger)(void);
 	int (*func_battery_charging_ctrl)(enum batt_ctl_t ctl);
 	int (*func_battery_gpio_init)(void);
+	int charger_re_enable;
 };
 
 extern int register_notifier_cable_status(struct notifier_block *nb);

@@ -22,7 +22,7 @@
 #include <asm/mach-types.h>
 
 #include <mach/htc_sleep_clk.h>
-/*#include <linux/mfd/pmic8058.h>*/
+#include <linux/mfd/pmic8058.h>
 
 
 static int htc_sleep_clk_pin;
@@ -30,23 +30,21 @@ static int htc_sleep_clk_state_wifi;
 static int htc_sleep_clk_state_bt;
 static DEFINE_MUTEX(htc_w_b_mutex);
 
-#if 0 /* TODO: Enable this later */
 /* pm8058 config */
-static struct pm8058_gpio pmic_gpio_sleep_clk_output = {
+static struct pm_gpio pmic_gpio_sleep_clk_output = {
 	.direction      = PM_GPIO_DIR_OUT,
 	.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
 	.output_value   = 0,
 	.pull           = PM_GPIO_PULL_NO,
-	.vin_sel        = PM_GPIO_VIN_S3,      /* S3 1.8 V */
+	.vin_sel        = PM8058_GPIO_VIN_S3,      /* S3 1.8 V */
 	.out_strength   = PM_GPIO_STRENGTH_HIGH,
 	.function       = PM_GPIO_FUNC_2,
 };
-#endif
 
-static int set_wifi_bt_sleep_clk(int on)
+int set_wifi_bt_sleep_clk(int on)
 {
 	int err = 0;
-#if 0 /* TODO: Enable this later */
+
 	if (on) {
 		printk(KERN_DEBUG "EN SLEEP CLK\n");
 		pmic_gpio_sleep_clk_output.function = PM_GPIO_FUNC_2;
@@ -54,17 +52,17 @@ static int set_wifi_bt_sleep_clk(int on)
 		printk(KERN_DEBUG "DIS SLEEP CLK\n");
 		pmic_gpio_sleep_clk_output.function = PM_GPIO_FUNC_NORMAL;
 	}
-
-	err = pm8058_gpio_config(htc_sleep_clk_pin,
+#ifdef CONFIG_GPIO_PM8XXX
+	err = pm8xxx_gpio_config(htc_sleep_clk_pin,
 					&pmic_gpio_sleep_clk_output);
-
+#endif
 	if (err) {
 		if (on)
 			printk(KERN_DEBUG "ERR EN SLEEP CLK, ERR=%d\n", err);
 		else
 			printk(KERN_DEBUG "ERR DIS SLEEP CLK, ERR=%d\n", err);
 	}
-#endif
+
 	return err;
 }
 
@@ -112,7 +110,7 @@ int htc_wifi_bt_sleep_clk_ctl(int on, int id)
 			printk(KERN_DEBUG "KEEP SLEEP CLK ALIVE\n");
 		}
 
-		if (id == ID_BT)
+		if (id)
 			htc_sleep_clk_state_bt = CLK_OFF;
 		else
 			htc_sleep_clk_state_wifi = CLK_OFF;

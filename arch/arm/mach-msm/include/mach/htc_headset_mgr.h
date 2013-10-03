@@ -128,7 +128,7 @@
 #define HS_DELAY_INSERT			500
 #define HS_DELAY_REMOVE_LONG		700
 #define HS_DELAY_REMOVE_SHORT		200
-#define HS_DELAY_BUTTON			500
+#define HS_DELAY_BUTTON			10
 #define HS_DELAY_IRQ_INIT		(10 * HS_DELAY_SEC)
 
 #define HS_JIFFIES_ZERO			msecs_to_jiffies(HS_DELAY_ZERO)

@@ -1082,4 +1082,3 @@ static void __exit acpi_ec_exit(void)
 	return;
 }
 #endif	/* 0 */
-

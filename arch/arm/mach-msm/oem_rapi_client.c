@@ -26,7 +26,7 @@
 #include <mach/msm_rpcrouter.h>
 #include <mach/oem_rapi_client.h>
 
-#define OEM_RAPI_PROG  0x3000006B
+#define OEM_RAPI_PROG  0x3001006B
 #define OEM_RAPI_VERS  0x00010001
 
 #define OEM_RAPI_NULL_PROC                        0
@@ -182,10 +182,12 @@ EXPORT_SYMBOL(oem_rapi_client_streaming_function);
 int oem_rapi_client_close(void)
 {
 	mutex_lock(&oem_rapi_client_lock);
-	if (--open_count == 0) {
-		msm_rpc_unregister_client(rpc_client);
-		pr_info("%s: disconnected from remote oem rapi server\n",
-			__func__);
+	if (open_count > 0) {
+		if (--open_count == 0) {
+			msm_rpc_unregister_client(rpc_client);
+			pr_info("%s: disconnected from remote oem rapi server\n",
+				__func__);
+		}
 	}
 	mutex_unlock(&oem_rapi_client_lock);
 	return 0;
@@ -202,6 +204,9 @@ struct msm_rpc_client *oem_rapi_client_init(void)
 						      oem_rapi_client_cb);
 		if (!IS_ERR(rpc_client))
 			open_count++;
+	} else {
+		/* increase the counter */
+		open_count++;
 	}
 	mutex_unlock(&oem_rapi_client_lock);
 	return rpc_client;

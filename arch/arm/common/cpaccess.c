@@ -217,11 +217,16 @@ static int get_register_params(char *str_tmp)
 	unsigned long op1, op2, crn, crm, cp = 15, write_value, il2index;
 	char rw;
 	int cnt = 0;
+	char *str = strsep(&str_tmp, ":");
 
 	il2index = 0;
-	strncpy(type, strsep(&str_tmp, ":"), TYPE_MAX_CHARACTERS);
+	strncpy(type, !str?"":str , TYPE_MAX_CHARACTERS);
 
 	if (strncasecmp(type, "C", TYPE_MAX_CHARACTERS) == 0) {
+		if (!str_tmp) {
+			pr_err("str_tmp is null.\n");
+			return -EINVAL;
+		}
 
 		sscanf(str_tmp, "%lu:%lu:%lu:%lu:%lu:%c:%lx:%d",
 			&cp, &op1, &crn, &crm, &op2, &rw, &write_value, &cpu);

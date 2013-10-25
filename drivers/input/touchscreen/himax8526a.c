@@ -139,8 +139,9 @@ int i2c_himax_write(struct i2c_client *client, uint8_t command, uint8_t *data, u
 	}
 
 	if (retry == HIMAX_I2C_RETRY_TIMES) {
-		printk(KERN_ERR "i2c_write_block retry over %d\n",
-			HIMAX_I2C_RETRY_TIMES);
+		printk(KERN_ERR "[TS]%s: i2c_write_block retry over %d\n",
+			__func__, HIMAX_I2C_RETRY_TIMES);
+			
 		return -EIO;
 	}
 	return 0;
@@ -653,6 +654,7 @@ static void himax_ts_work_func(struct work_struct *work)
 
 		if (ts->debug_log_level & 0x2) {
 			printk(KERN_INFO "[TS] All Fingers left\n");
+		}
 			#ifdef HIMAX_S2W
 				if (s2w_switch) {
 					if (himax_s2w_status())
@@ -1077,15 +1079,14 @@ static int himax8526a_resume(struct i2c_client *client)
 	i2c_himax_master_write(ts->client, ts->cable_config, sizeof(ts->cable_config));
 
 	ts->suspend_mode = 0;
-
-	#ifdef HIMAX_S2W
-	  ts->s2w_touched = 0;
-	if (!s2w_switch) {
-	#endif
-	enable_irq(client->irq);
-	#ifdef HIMAX_S2W
-	}
-
+#ifdef HIMAX_S2W
+	ts->s2w_touched = 0;
+  if (!s2w_switch) {
+#endif
+  enable_irq(client->irq);
+#ifdef HIMAX_S2W
+  }
+ #endif
 	return 0;
 }
 

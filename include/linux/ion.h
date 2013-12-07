@@ -63,19 +63,20 @@ enum ion_heap_type {
  */
 
 enum ion_heap_ids {
+	ION_HEAP_SYSTEM_ID = -1, /* depreciated */
+	ION_HEAP_SYSTEM_CONTIG_ID = -1, /* depreciated ID */
+	ION_HEAP_SMI_ID = -1, /* depreciated ID */
+	ION_HEAP_AUDIO_ID = -1, /* depreciated ID */
+	ION_HEAP_ADSP2_ID = -1, /* depreciated ID */
+
 	INVALID_HEAP_ID = -1,
-	ION_HEAP_SYSTEM_ID = 1,
 	ION_IOMMU_HEAP_ID = 4,
 	ION_CP_MM_HEAP_ID = 8,
 	ION_CP_ROTATOR_HEAP_ID = 9,
-	ION_HEAP_SYSTEM_CONTIG_ID,
 	ION_CP_MFC_HEAP_ID = 12,
 	ION_CP_WB_HEAP_ID = 16, /* 8660 only */
 	ION_CAMERA_HEAP_ID = 20, /* 8660 only */
 	ION_SF_HEAP_ID = 24,
-	ION_HEAP_SMI_ID,
-	ION_HEAP_AUDIO_ID,
-	ION_HEAP_ADSP2_ID,
 	ION_QSECOM_HEAP_ID = 27,
 	ION_AUDIO_HEAP_ID = 28,
 

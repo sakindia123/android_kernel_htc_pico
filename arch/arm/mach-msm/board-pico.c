@@ -1662,12 +1662,14 @@ early_param("pmem_kernel_ebi1_size", pmem_kernel_ebi1_size_setup);
 #define MSM_ION_HEAP_NUM        1
 #endif
 
+#ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
 #define MSM_ION_SF_SIZE  MSM_PMEM_MDP_SIZE
 
 static struct ion_co_heap_pdata co_ion_pdata = {
 	.adjacent_mem_id = INVALID_HEAP_ID,
 	.align = PAGE_SIZE,
 };
+#endif
 
 static struct ion_platform_data ion_pdata = {
 	.nr = MSM_ION_HEAP_NUM,

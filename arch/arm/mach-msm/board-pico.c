@@ -1538,9 +1538,9 @@ static struct platform_device ram_console_device = {
 static struct platform_device ion_dev;
 #endif
 static struct platform_device android_pmem_adsp_device;
+static struct platform_device android_pmem_audio_device;
 #ifndef CONFIG_ION_MSM
 static struct platform_device android_pmem_device;
-static struct platform_device android_pmem_audio_device;
 #endif
 
 static struct platform_device *pico_devices[] __initdata = {
@@ -1555,9 +1555,9 @@ static struct platform_device *pico_devices[] __initdata = {
 	&htc_battery_pdev,
 	&msm_device_otg,
 	&android_pmem_adsp_device,
+	&android_pmem_audio_device,
 #ifndef CONFIG_ION_MSM
 	&android_pmem_device,
-	&android_pmem_audio_device,
 #endif
 	&msm_device_snd,
 	&msm_device_adspdec,
@@ -1593,7 +1593,6 @@ static struct platform_device android_pmem_adsp_device = {
 	.dev = { .platform_data = &android_pmem_adsp_pdata },
 };
 
-#ifndef CONFIG_ION_MSM
 static struct android_pmem_platform_data android_pmem_audio_pdata = {
 	.name = "pmem_audio",
 	.allocator_type = PMEM_ALLOCATORTYPE_BITMAP,
@@ -1607,6 +1606,7 @@ static struct platform_device android_pmem_audio_device = {
 	.dev = { .platform_data = &android_pmem_audio_pdata },
 };
 
+#ifndef CONFIG_ION_MSM
 static struct android_pmem_platform_data android_pmem_pdata = {
 	.name = "pmem",
 	.allocator_type = PMEM_ALLOCATORTYPE_BITMAP,
@@ -1657,20 +1657,17 @@ early_param("pmem_kernel_ebi1_size", pmem_kernel_ebi1_size_setup);
 
 #ifdef CONFIG_ION_MSM
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
-#define MSM_ION_HEAP_NUM        3
+#define MSM_ION_HEAP_NUM        2
 #else
 #define MSM_ION_HEAP_NUM        1
 #endif
 
-#define MSM_ION_AUDIO_SIZE  (MSM_PMEM_AUDIO_SIZE + PMEM_KERNEL_EBI1_SIZE)
 #define MSM_ION_SF_SIZE  MSM_PMEM_MDP_SIZE
 
-#ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
 static struct ion_co_heap_pdata co_ion_pdata = {
 	.adjacent_mem_id = INVALID_HEAP_ID,
 	.align = PAGE_SIZE,
 };
-#endif
 
 static struct ion_platform_data ion_pdata = {
 	.nr = MSM_ION_HEAP_NUM,
@@ -1681,14 +1678,6 @@ static struct ion_platform_data ion_pdata = {
 			.name	= ION_VMALLOC_HEAP_NAME,
 		},
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
-		{
-			.id	= ION_AUDIO_HEAP_ID,
-			.type	= ION_HEAP_TYPE_CARVEOUT,
-			.name	= ION_AUDIO_HEAP_NAME,
-			.size	= MSM_ION_AUDIO_SIZE,
-			.memory_type = ION_EBI_TYPE,
-			.extra_data = (void *) &co_ion_pdata,
-		},
 		{
 			.id	= ION_SF_HEAP_ID,
 			.type	= ION_HEAP_TYPE_CARVEOUT,
@@ -1723,22 +1712,21 @@ static struct memtype_reserve msm7x27a_reserve_table[] __initdata = {
 static void __init size_pmem_devices(void)
 {
 	android_pmem_adsp_pdata.size = pmem_adsp_size;
+	android_pmem_audio_pdata.size = pmem_audio_size;
 #ifndef CONFIG_ION_MSM
 	android_pmem_pdata.size = pmem_mdp_size;
-	android_pmem_audio_pdata.size = pmem_audio_size;
 #endif
 }
 static void __init reserve_pmem_memory(void) {
 	msm7x27a_reserve_table[MEMTYPE_EBI1].size += pmem_adsp_size;
-#ifndef CONFIG_ION_MSM
-	msm7x27a_reserve_table[MEMTYPE_EBI1].size += pmem_mdp_size;
 	msm7x27a_reserve_table[MEMTYPE_EBI1].size += pmem_audio_size;
 	msm7x27a_reserve_table[MEMTYPE_EBI1].size += pmem_kernel_ebi1_size;
+#ifndef CONFIG_ION_MSM
+	msm7x27a_reserve_table[MEMTYPE_EBI1].size += pmem_mdp_size;
 #endif
 }
 static void __init reserve_ion_memory(void) {
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
-	msm7x27a_reserve_table[MEMTYPE_EBI1].size += MSM_ION_AUDIO_SIZE;
 	msm7x27a_reserve_table[MEMTYPE_EBI1].size += MSM_ION_SF_SIZE;
 #endif
 }

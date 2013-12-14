@@ -1,4 +1,4 @@
-/* Copyright (c) 2002,2008-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2002,2008-2011, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -17,17 +17,12 @@
 
 int adreno_debugfs_init(struct kgsl_device *device);
 
-extern int adreno_pm_regs_enabled;
-extern int adreno_pm_ib_enabled;
+extern int kgsl_pm_regs_enabled;
+extern int adreno_ib_dump_on_pagef_enabled;
 
-static inline int is_adreno_pm_regs_enabled(void)
+static inline int kgsl_pmregs_enabled(void)
 {
-	return adreno_pm_regs_enabled;
-}
-
-static inline int is_adreno_pm_ib_enabled(void)
-{
-	return adreno_pm_ib_enabled;
+	return kgsl_pm_regs_enabled;
 }
 
 #else
@@ -41,6 +36,12 @@ static inline int kgsl_pmregs_enabled(void)
 	/* If debugfs is turned off, then always print registers */
 	return 1;
 }
+
 #endif
+
+static inline int is_adreno_ib_dump_on_pagef_enabled(struct kgsl_device *device)
+{
+	return adreno_ib_dump_on_pagef_enabled;
+}
 
 #endif /* __ADRENO_DEBUGFS_H */

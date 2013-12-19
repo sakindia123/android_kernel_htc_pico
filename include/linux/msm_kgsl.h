@@ -13,6 +13,7 @@
 #define KGSL_CONTEXT_TRASH_STATE	0x00000020
 #define KGSL_CONTEXT_PER_CONTEXT_TS	0x00000040
 #define KGSL_CONTEXT_USER_GENERATED_TS  0x00000080
+#define KGSL_CONTEXT_NO_FAULT_TOLERANCE 0x00000200
 #define KGSL_CONTEXT_INVALID            0xffffffff
 /* Memory allocayion flags */
 #define KGSL_MEMFLAGS_GPUREADONLY	0x01000000
@@ -217,6 +218,7 @@ struct kgsl_device_platform_data {
 	struct kgsl_device_iommu_data *iommu_data;
 	int iommu_count;
 	struct msm_dcvs_core_info *core_info;
+	unsigned int chipid;
 };
 
 #endif

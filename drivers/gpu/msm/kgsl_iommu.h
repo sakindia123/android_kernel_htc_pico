@@ -1,4 +1,4 @@
-/* Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -13,24 +13,25 @@
 #ifndef __KGSL_IOMMU_H
 #define __KGSL_IOMMU_H
 
-#include <mach/iommu.h>
+#define KGSL_IOMMU_CTX_OFFSET_V1	0
+#define KGSL_IOMMU_CTX_OFFSET_V2	0x8000
+#define KGSL_IOMMU_CTX_SHIFT		12
 
-/* IOMMU registers and masks */
-#define KGSL_IOMMU_TTBR0			0x10
-#define KGSL_IOMMU_TTBR1			0x14
-#define KGSL_IOMMU_FSR				0x20
+enum kgsl_iommu_reg_map {
+	KGSL_IOMMU_GLOBAL_BASE = 0,
+	KGSL_IOMMU_CTX_TTBR0,
+	KGSL_IOMMU_CTX_TTBR1,
+	KGSL_IOMMU_CTX_FSR,
+	KGSL_IOMMU_CTX_TLBIALL,
+	KGSL_IOMMU_CTX_RESUME,
+	KGSL_IOMMU_REG_MAX
+};
 
-#define KGSL_IOMMU_TTBR0_PA_MASK		0x0003FFFF
-#define KGSL_IOMMU_TTBR0_PA_SHIFT		14
-#define KGSL_IOMMU_CTX_TLBIALL			0x800
-#define KGSL_IOMMU_CONTEXTIDR			0x8
-#define KGSL_IOMMU_CONTEXTIDR_ASID_MASK		0xFF
-#define KGSL_IOMMU_CONTEXTIDR_ASID_SHIFT	0
-#define KGSL_IOMMU_CTX_TLBIASID			0x804
-#define KGSL_IOMMU_CTX_SHIFT			12
-
-#define KGSL_IOMMU_MAX_ASIDS			256
-#define KGSL_IOMMU_ASID_REUSE			2
+struct kgsl_iommu_register_list {
+	unsigned int reg_offset;
+	unsigned int reg_mask;
+	unsigned int reg_shift;
+};
 
 /*
  * Max number of iommu units that the gpu core can have
@@ -42,20 +43,25 @@
 #define KGSL_IOMMU_MAX_DEVS_PER_UNIT 2
 
 /* Macros to read/write IOMMU registers */
-#define KGSL_IOMMU_SET_IOMMU_REG(base_addr, ctx, REG, val)		\
-		writel_relaxed(val, base_addr +				\
-				(ctx << KGSL_IOMMU_CTX_SHIFT) +		\
-				KGSL_IOMMU_##REG)
+#define KGSL_IOMMU_SET_CTX_REG(iommu, iommu_unit, ctx, REG, val)	\
+		writel_relaxed(val,					\
+		iommu_unit->reg_map.hostptr +				\
+		iommu->iommu_reg_list[KGSL_IOMMU_CTX_##REG].reg_offset +\
+		(ctx << KGSL_IOMMU_CTX_SHIFT) +				\
+		iommu->ctx_offset)
 
-#define KGSL_IOMMU_GET_IOMMU_REG(base_addr, ctx, REG)			\
-		readl_relaxed(base_addr +				\
-			(ctx << KGSL_IOMMU_CTX_SHIFT) +			\
-			KGSL_IOMMU_##REG)
+#define KGSL_IOMMU_GET_CTX_REG(iommu, iommu_unit, ctx, REG)		\
+		readl_relaxed(						\
+		iommu_unit->reg_map.hostptr +				\
+		iommu->iommu_reg_list[KGSL_IOMMU_CTX_##REG].reg_offset +\
+		(ctx << KGSL_IOMMU_CTX_SHIFT) +				\
+		iommu->ctx_offset)
 
 /* Gets the lsb value of pagetable */
-#define KGSL_IOMMMU_PT_LSB(pt_val)					\
-		(pt_val & ~(KGSL_IOMMU_TTBR0_PA_MASK <<			\
-				KGSL_IOMMU_TTBR0_PA_SHIFT))
+#define KGSL_IOMMMU_PT_LSB(iommu, pt_val) \
+	(pt_val &							\
+	~(iommu->iommu_reg_list[KGSL_IOMMU_CTX_TTBR0].reg_mask <<	\
+	iommu->iommu_reg_list[KGSL_IOMMU_CTX_TTBR0].reg_shift))
 
 /* offset at which a nop command is placed in setstate_memory */
 #define KGSL_IOMMU_SETSTATE_NOP_OFFSET	1024
@@ -70,6 +76,8 @@
  * @ctx_id: This iommu units context id. It can be either 0 or 1
  * @clk_enabled: If set indicates that iommu clocks of this iommu context
  * are on, else the clocks are off
+ * fault: Flag when set indicates that this iommu device has caused a page
+ * fault
  */
 struct kgsl_iommu_device {
 	struct device *dev;
@@ -78,6 +86,7 @@ struct kgsl_iommu_device {
 	enum kgsl_iommu_context_id ctx_id;
 	bool clk_enabled;
 	struct kgsl_device *kgsldev;
+	int fault;
 };
 
 /*
@@ -106,10 +115,14 @@ struct kgsl_iommu_unit {
  * @clk_event_queued: Indicates whether an event to disable clocks
  * is already queued or not
  * @device: Pointer to kgsl device
- * @asids: A bit structure indicating which id's are presently used
- * @asid: Contains the initial value of IOMMU_CONTEXTIDR when a domain
- * is first attached
- * asid_reuse: Holds the number of times the reuse asid is reused
+ * @ctx_offset: The context offset to be added to base address when
+ * accessing IOMMU registers
+ * @iommu_reg_list: List of IOMMU registers { offset, map, shift } array
+ * @sync_lock_vars: Pointer to the IOMMU spinlock for serializing access to the
+ * IOMMU registers
+ * @sync_lock_desc: GPU Memory descriptor for the memory containing the
+ * spinlocks
+ * @sync_lock_initialized: True if the sync_lock feature is enabled
  */
 struct kgsl_iommu {
 	struct kgsl_iommu_unit iommu_units[KGSL_IOMMU_MAX_UNITS];
@@ -117,21 +130,21 @@ struct kgsl_iommu {
 	unsigned int iommu_last_cmd_ts;
 	bool clk_event_queued;
 	struct kgsl_device *device;
-	unsigned long *asids;
-	unsigned int asid;
-	unsigned int asid_reuse;
+	unsigned int ctx_offset;
+	struct kgsl_iommu_register_list *iommu_reg_list;
+	struct remote_iommu_petersons_spinlock *sync_lock_vars;
+	struct kgsl_memdesc sync_lock_desc;
+	bool sync_lock_initialized;
 };
 
 /*
  * struct kgsl_iommu_pt - Iommu pagetable structure private to kgsl driver
  * @domain: Pointer to the iommu domain that contains the iommu pagetable
  * @iommu: Pointer to iommu structure
- * @asid: The asid assigned to this domain
  */
 struct kgsl_iommu_pt {
 	struct iommu_domain *domain;
 	struct kgsl_iommu *iommu;
-	unsigned int asid;
 };
 
 #endif

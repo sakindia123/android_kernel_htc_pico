@@ -22,6 +22,7 @@
 #include <linux/types.h>
 #include <linux/errno.h>
 #include <linux/scatterlist.h>
+#include <linux/device.h>
 
 #define IOMMU_READ	(1)
 #define IOMMU_WRITE	(2)
@@ -59,6 +60,7 @@ struct iommu_ops {
 #ifdef CONFIG_IOMMU_API
 
 extern void register_iommu(struct iommu_ops *ops);
+extern bool iommu_present(struct bus_type *bus);
 extern bool iommu_found(void);
 extern struct iommu_domain *iommu_domain_alloc(int flags);
 extern void iommu_domain_free(struct iommu_domain *domain);
@@ -84,6 +86,11 @@ extern phys_addr_t iommu_get_pt_base_addr(struct iommu_domain *domain);
 
 static inline void register_iommu(struct iommu_ops *ops)
 {
+}
+
+static inline bool iommu_present(struct bus_type *bus)
+{
+	return false;
 }
 
 static inline bool iommu_found(void)

@@ -615,10 +615,12 @@ int sync_fence_wait(struct sync_fence *fence, long timeout)
 		return fence->status;
 	}
 
-	if (fence->status == 0 && timeout > 0) {
-		pr_info("fence timeout on [%p] after %dms\n", fence,
-			jiffies_to_msecs(timeout));
-		sync_dump(fence);
+	if (fence->status == 0) {
+		if (timeout > 0) {
+			pr_info("fence timeout on [%p] after %dms\n", fence,
+				jiffies_to_msecs(timeout));
+			sync_dump(fence);
+		}
 		return -ETIME;
 	}
 
@@ -740,7 +742,7 @@ err_put_fd:
 	return err;
 }
 
-int sync_fill_pt_info(struct sync_pt *pt, void *data, int size)
+static int sync_fill_pt_info(struct sync_pt *pt, void *data, int size)
 {
 	struct sync_pt_info *info = data;
 	int ret;
@@ -767,7 +769,6 @@ int sync_fill_pt_info(struct sync_pt *pt, void *data, int size)
 
 	return info->len;
 }
-
 
 static long sync_fence_ioctl_fence_info(struct sync_fence *fence,
 					unsigned long arg)

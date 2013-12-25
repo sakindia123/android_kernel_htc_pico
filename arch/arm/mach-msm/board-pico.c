@@ -88,12 +88,13 @@
 #include <mach/htc_util.h>
 
 #include <mach/cable_detect.h>
+
+#include <linux/ion.h>
+
 int htc_get_usb_accessory_adc_level(uint32_t *buffer);
 
 static int config_gpio_table(uint32_t *table, int len);
 
-#define PMEM_KERNEL_EBI1_SIZE	0x3A000
-#define MSM_PMEM_AUDIO_SIZE  0x1F4000 //0x5B000
 
 enum {
 	GPIO_EXPANDER_IRQ_BASE	= NR_MSM_IRQS + NR_GPIO_IRQS,
@@ -1011,36 +1012,6 @@ static struct i2c_board_info i2c_aic3254_devices[] = {
 	},
 };
 #endif
-static struct android_pmem_platform_data android_pmem_adsp_pdata = {
-	.name = "pmem_adsp",
-	.allocator_type = PMEM_ALLOCATORTYPE_BITMAP,
-	.cached = 1,
-	.memory_type = MEMTYPE_EBI1,
-};
-
-static struct platform_device android_pmem_adsp_device = {
-	.name = "android_pmem",
-	.id = 1,
-	.dev = { .platform_data = &android_pmem_adsp_pdata },
-};
-
-static unsigned pmem_mdp_size = MSM_PMEM_MDP_SIZE;
-static int __init pmem_mdp_size_setup(char *p)
-{
-	pmem_mdp_size = memparse(p, NULL);
-	return 0;
-}
-
-early_param("pmem_mdp_size", pmem_mdp_size_setup);
-
-static unsigned pmem_adsp_size = MSM_PMEM_ADSP_SIZE;
-static int __init pmem_adsp_size_setup(char *p)
-{
-	pmem_adsp_size = memparse(p, NULL);
-	return 0;
-}
-
-early_param("pmem_adsp_size", pmem_adsp_size_setup);
 
 #define SND(desc, num) { .name = #desc, .id = num }
 static struct snd_endpoint snd_endpoints_list[] = {
@@ -1144,8 +1115,7 @@ static unsigned int dec_concurrency_table[] = {
 	(DEC4_FORMAT),
 
 	/* Concurrency 6 */
-	(DEC0_FORMAT|(1<<MSM_ADSP_MODE_TUNNEL)|
-			(1<<MSM_ADSP_MODE_NONTUNNEL)|(1<<MSM_ADSP_OP_DM)),
+	(DEC0_FORMAT|(1<<MSM_ADSP_MODE_TUNNEL)|(1<<MSM_ADSP_MODE_NONTUNNEL)|(1<<MSM_ADSP_OP_DM)),
 	0, 0, 0, 0,
 
 	/* Concurrency 7 */
@@ -1182,31 +1152,6 @@ static struct platform_device msm_device_adspdec = {
 	.dev    = {
 		.platform_data = &msm_device_adspdec_database
 	},
-};
-
-static struct android_pmem_platform_data android_pmem_audio_pdata = {
-	.name = "pmem_audio",
-	.allocator_type = PMEM_ALLOCATORTYPE_BITMAP,
-	.cached = 0,
-	.memory_type = MEMTYPE_EBI1,
-};
-
-static struct platform_device android_pmem_audio_device = {
-	.name = "android_pmem",
-	.id = 2,
-	.dev = { .platform_data = &android_pmem_audio_pdata },
-};
-
-static struct android_pmem_platform_data android_pmem_pdata = {
-	.name = "pmem",
-	.allocator_type = PMEM_ALLOCATORTYPE_BITMAP,
-	.cached = 1,
-	.memory_type = MEMTYPE_EBI1,
-};
-static struct platform_device android_pmem_device = {
-	.name = "android_pmem",
-	.id = 0,
-	.dev = { .platform_data = &android_pmem_pdata },
 };
 
 static u32 msm_calculate_batt_capacity(u32 current_voltage);
@@ -1589,6 +1534,15 @@ static struct platform_device ram_console_device = {
 	.resource       = ram_console_resources,
 };
 
+#ifdef CONFIG_ION_MSM
+static struct platform_device ion_dev;
+#endif
+static struct platform_device android_pmem_adsp_device;
+static struct platform_device android_pmem_audio_device;
+#ifndef CONFIG_ION_MSM
+static struct platform_device android_pmem_device;
+#endif
+
 static struct platform_device *pico_devices[] __initdata = {
 	&ram_console_device,
 	&msm_device_dmov,
@@ -1600,9 +1554,11 @@ static struct platform_device *pico_devices[] __initdata = {
 	&msm_gsbi1_qup_i2c_device,
 	&htc_battery_pdev,
 	&msm_device_otg,
-	&android_pmem_device,
 	&android_pmem_adsp_device,
 	&android_pmem_audio_device,
+#ifndef CONFIG_ION_MSM
+	&android_pmem_device,
+#endif
 	&msm_device_snd,
 	&msm_device_adspdec,
 	&msm_batt_device,
@@ -1619,7 +1575,77 @@ static struct platform_device *pico_devices[] __initdata = {
 #endif
 	&cable_detect_device,
 	&pm8029_leds,
+#ifdef CONFIG_ION_MSM
+	&ion_dev,
+#endif
 };
+
+static struct android_pmem_platform_data android_pmem_adsp_pdata = {
+	.name = "pmem_adsp",
+	.allocator_type = PMEM_ALLOCATORTYPE_BITMAP,
+	.cached = 1,
+	.memory_type = MEMTYPE_EBI1,
+};
+
+static struct platform_device android_pmem_adsp_device = {
+	.name = "android_pmem",
+	.id = 1,
+	.dev = { .platform_data = &android_pmem_adsp_pdata },
+};
+
+static struct android_pmem_platform_data android_pmem_audio_pdata = {
+	.name = "pmem_audio",
+	.allocator_type = PMEM_ALLOCATORTYPE_BITMAP,
+	.cached = 0,
+	.memory_type = MEMTYPE_EBI1,
+};
+
+static struct platform_device android_pmem_audio_device = {
+	.name = "android_pmem",
+	.id = 2,
+	.dev = { .platform_data = &android_pmem_audio_pdata },
+};
+
+#ifndef CONFIG_ION_MSM
+static struct android_pmem_platform_data android_pmem_pdata = {
+	.name = "pmem",
+	.allocator_type = PMEM_ALLOCATORTYPE_BITMAP,
+	.cached = 1,
+	.memory_type = MEMTYPE_EBI1,
+};
+
+static struct platform_device android_pmem_device = {
+	.name = "android_pmem",
+	.id = 0,
+	.dev = { .platform_data = &android_pmem_pdata },
+};
+#endif
+
+static unsigned pmem_adsp_size = MSM_PMEM_ADSP_SIZE;
+static int __init pmem_adsp_size_setup(char *p)
+{
+	pmem_adsp_size = memparse(p, NULL);
+	return 0;
+}
+
+early_param("pmem_adsp_size", pmem_adsp_size_setup);
+
+static unsigned pmem_audio_size = MSM_PMEM_AUDIO_SIZE;
+static int __init pmem_audio_size_setup(char *p)
+{
+	pmem_audio_size = memparse(p, NULL);
+	return 0;
+}
+early_param("pmem_audio_size", pmem_audio_size_setup);
+
+static unsigned pmem_mdp_size = MSM_PMEM_MDP_SIZE;
+static int __init pmem_mdp_size_setup(char *p)
+{
+	pmem_mdp_size = memparse(p, NULL);
+	return 0;
+}
+
+early_param("pmem_mdp_size", pmem_mdp_size_setup);
 
 static unsigned pmem_kernel_ebi1_size = PMEM_KERNEL_EBI1_SIZE;
 static int __init pmem_kernel_ebi1_size_setup(char *p)
@@ -1629,13 +1655,50 @@ static int __init pmem_kernel_ebi1_size_setup(char *p)
 }
 early_param("pmem_kernel_ebi1_size", pmem_kernel_ebi1_size_setup);
 
-static unsigned pmem_audio_size = MSM_PMEM_AUDIO_SIZE;
-static int __init pmem_audio_size_setup(char *p)
-{
-	pmem_audio_size = memparse(p, NULL);
-	return 0;
-}
-early_param("pmem_audio_size", pmem_audio_size_setup);
+#ifdef CONFIG_ION_MSM
+#ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
+#define MSM_ION_HEAP_NUM        2
+#else
+#define MSM_ION_HEAP_NUM        1
+#endif
+
+#ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
+#define MSM_ION_SF_SIZE  MSM_PMEM_MDP_SIZE
+
+static struct ion_co_heap_pdata co_ion_pdata = {
+	.adjacent_mem_id = INVALID_HEAP_ID,
+	.align = PAGE_SIZE,
+};
+#endif
+
+static struct ion_platform_data ion_pdata = {
+	.nr = MSM_ION_HEAP_NUM,
+	.heaps = {
+		{
+			.id	= ION_SYSTEM_HEAP_ID,
+			.type	= ION_HEAP_TYPE_SYSTEM,
+			.name	= ION_VMALLOC_HEAP_NAME,
+		},
+#ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
+		{
+			.id	= ION_SF_HEAP_ID,
+			.type	= ION_HEAP_TYPE_CARVEOUT,
+			.name	= ION_SF_HEAP_NAME,
+			.size	= MSM_ION_SF_SIZE,
+			.memory_type = ION_EBI_TYPE,
+			.extra_data = &co_ion_pdata,
+		},
+#endif
+	}
+};
+
+static struct platform_device ion_dev = {
+	.name = "ion-msm",
+	.id = 1,
+	.dev = { .platform_data = &ion_pdata },
+};
+
+#endif
 
 static struct memtype_reserve msm7x27a_reserve_table[] __initdata = {
 	[MEMTYPE_SMI] = {
@@ -1650,25 +1713,23 @@ static struct memtype_reserve msm7x27a_reserve_table[] __initdata = {
 
 static void __init size_pmem_devices(void)
 {
-#ifdef CONFIG_ANDROID_PMEM
 	android_pmem_adsp_pdata.size = pmem_adsp_size;
-	android_pmem_pdata.size = pmem_mdp_size;
 	android_pmem_audio_pdata.size = pmem_audio_size;
+#ifndef CONFIG_ION_MSM
+	android_pmem_pdata.size = pmem_mdp_size;
 #endif
 }
-
-static void __init reserve_memory_for(struct android_pmem_platform_data *p)
-{
-	msm7x27a_reserve_table[p->memory_type].size += p->size;
-}
-
-static void __init reserve_pmem_memory(void)
-{
-#ifdef CONFIG_ANDROID_PMEM
-	reserve_memory_for(&android_pmem_adsp_pdata);
-	reserve_memory_for(&android_pmem_pdata);
-	reserve_memory_for(&android_pmem_audio_pdata);
+static void __init reserve_pmem_memory(void) {
+	msm7x27a_reserve_table[MEMTYPE_EBI1].size += pmem_adsp_size;
+	msm7x27a_reserve_table[MEMTYPE_EBI1].size += pmem_audio_size;
 	msm7x27a_reserve_table[MEMTYPE_EBI1].size += pmem_kernel_ebi1_size;
+#ifndef CONFIG_ION_MSM
+	msm7x27a_reserve_table[MEMTYPE_EBI1].size += pmem_mdp_size;
+#endif
+}
+static void __init reserve_ion_memory(void) {
+#ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
+	msm7x27a_reserve_table[MEMTYPE_EBI1].size += MSM_ION_SF_SIZE;
 #endif
 }
 
@@ -1676,6 +1737,9 @@ static void __init msm7x27a_calculate_reserve_sizes(void)
 {
 	size_pmem_devices();
 	reserve_pmem_memory();
+#ifdef CONFIG_ION_MSM
+	reserve_ion_memory();
+#endif
 }
 
 static int msm7x27a_paddr_to_memtype(unsigned int paddr)

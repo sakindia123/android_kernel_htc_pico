@@ -1728,7 +1728,9 @@ static void __init reserve_pmem_memory(void) {
 #endif
 }
 static void __init reserve_ion_memory(void) {
-
+#ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
+	msm7x27a_reserve_table[MEMTYPE_EBI1].size += MSM_ION_SF_SIZE;
+#endif
 }
 
 static void __init msm7x27a_calculate_reserve_sizes(void)

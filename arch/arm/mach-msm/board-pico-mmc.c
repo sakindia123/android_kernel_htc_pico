@@ -486,7 +486,7 @@ static struct mmc_platform_data pico_wifi_data = {
 	.msmsdcc_fmin   = 400000,
 	.msmsdcc_fmid   = 24000000,
 	.msmsdcc_fmax   = 50000000,
-	.nonremovable   = 1,
+	.nonremovable   = 0,
 	/*.dummy52_required = 1,*/
 };
 

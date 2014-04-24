@@ -45,10 +45,6 @@ spinlock_t tz_lock;
  * per frame for 60fps content.
  */
 #define FLOOR			5000
-/* CEILING is 50msec, larger than any standard
- * frame length, but less than the idle timer.
- */
-#define CEILING			50000
 #define SWITCH_OFF		200
 #define SWITCH_OFF_RESET_TH	40
 #define SKIP_COUNTER		500
@@ -148,6 +144,8 @@ static void tz_wake(struct kgsl_device *device, struct kgsl_pwrscale *pwrscale)
 					device->pwrctrl.default_pwrlevel);
 }
 
+static void tz_idle(struct kgsl_device *device, struct kgsl_pwrscale *pwrscale)
+
 #ifdef CONFIG_MSM_KGSL_SIMPLE_GOV
 /* KGSL Simple GPU Governor */
 /* Copyright (c) 2011-2013, Paul Reioux (Faux123). All rights reserved. */
@@ -191,7 +189,8 @@ static int simple_governor(struct kgsl_device *device, int idle_stat)
 }
 #endif
 
-static void tz_idle(struct kgsl_device *device, struct kgsl_pwrscale *pwrscale)
+static void tz_idle(struct kgsl_device *device, struct kgsl_pwrscale *pwrscale,
+						unsigned int ignore_idle)
 {
 	struct kgsl_pwrctrl *pwr = &device->pwrctrl;
 	struct tz_priv *priv = pwrscale->priv;
@@ -230,28 +229,28 @@ static void tz_idle(struct kgsl_device *device, struct kgsl_pwrscale *pwrscale)
 		priv->no_switch_cnt = 0;
 	}
 
-	/* If there is an extended block of busy processing,
-	 * increase frequency.  Otherwise run the normal algorithm.
-	 */
-	if (priv->bin.busy_time > CEILING) {
-		val = -1;
-	} else {
-		idle = priv->bin.total_time - priv->bin.busy_time;
-		idle = (idle > 0) ? idle : 0;
+	idle = priv->bin.total_time - priv->bin.busy_time;
+	priv->bin.total_time = 0;
+	priv->bin.busy_time = 0;
+	idle = (idle > 0) ? idle : 0;
+	val = __secure_tz_entry(TZ_UPDATE_ID, idle, device->id);
+	if (val)
+	idle = stats.total_time - stats.busy_time;
+	idle = (idle > 0) ? idle : 0;
 #ifdef CONFIG_MSM_KGSL_SIMPLE_GOV
 	if (priv->governor == TZ_GOVERNOR_SIMPLE)
 		val = simple_governor(device, idle);
 	else
 		val = __secure_tz_entry(TZ_UPDATE_ID, idle, device->id);
 #else
-		val = __secure_tz_entry(TZ_UPDATE_ID, idle, device->id);
+	val = __secure_tz_entry(TZ_UPDATE_ID, idle, device->id);
 #endif
-	}
-	priv->bin.total_time = 0;
-	priv->bin.busy_time = 0;
-	if (val)
+	if (val) {
 		kgsl_pwrctrl_pwrlevel_change(device,
 					     pwr->active_pwrlevel + val);
+		//pr_info("TZ idle stat: %d, TZ PL: %d, TZ out: %d\n",
+		//		idle, pwr->active_pwrlevel, val);
+	}
 }
 
 static void tz_busy(struct kgsl_device *device,

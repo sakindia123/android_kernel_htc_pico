@@ -617,6 +617,12 @@ static void build_regsave_cmds(struct adreno_device *adreno_dev,
 	*cmd++ = REG_TP0_CHICKEN;
 	*cmd++ = tmp_ctx.reg_values[1];
 
+	if (adreno_is_a20x(adreno_dev)) {
+		*cmd++ = cp_type3_packet(CP_REG_TO_MEM, 2);
+		*cmd++ = REG_RB_BC_CONTROL;
+		*cmd++ = tmp_ctx.reg_values[2];
+	}
+
 	if (adreno_is_a22x(adreno_dev)) {
 		unsigned int i;
 		unsigned int j = 2;
@@ -1137,6 +1143,12 @@ static void build_regrestore_cmds(struct adreno_device *adreno_dev,
 	tmp_ctx.reg_values[1] = virt2gpu(cmd, &drawctxt->gpustate);
 	*cmd++ = 0x00000000;
 
+	if (adreno_is_a20x(adreno_dev)) {
+		*cmd++ = cp_type0_packet(REG_RB_BC_CONTROL, 1);
+		tmp_ctx.reg_values[2] = virt2gpu(cmd, &drawctxt->gpustate);
+		*cmd++ = 0x00000000;
+	}
+
 	if (adreno_is_a22x(adreno_dev)) {
 		unsigned int i;
 		unsigned int j = 2;
@@ -1574,8 +1586,6 @@ static void a2xx_drawctxt_restore(struct adreno_device *adreno_dev,
 		return;
 	}
 
-	KGSL_CTXT_INFO(device, "context flags %08x\n", context->flags);
-
 	cmds[0] = cp_nop_packet(1);
 	cmds[1] = KGSL_CONTEXT_TO_MEM_IDENTIFIER;
 	cmds[2] = cp_type3_packet(CP_MEM_WRITE, 2);
@@ -1708,6 +1718,34 @@ static void a2xx_cp_intrcallback(struct kgsl_device *device)
 		return;
 	}
 
+	if (status & CP_INT_CNTL__RB_INT_MASK) {
+		/* signal intr completion event */
+		unsigned int context_id, timestamp;
+		kgsl_sharedmem_readl(&device->memstore, &context_id,
+				KGSL_MEMSTORE_OFFSET(KGSL_MEMSTORE_GLOBAL,
+					current_context));
+
+		kgsl_sharedmem_readl(&device->memstore, &timestamp,
+				KGSL_MEMSTORE_OFFSET(context_id,
+					eoptimestamp));
+
+		if (context_id < KGSL_MEMSTORE_MAX) {
+			/* reset per context ts_cmp_enable */
+			kgsl_sharedmem_writel(&device->memstore,
+					KGSL_MEMSTORE_OFFSET(context_id,
+						ts_cmp_enable), 0);
+			/* Always reset global timestamp ts_cmp_enable */
+			kgsl_sharedmem_writel(&device->memstore,
+					KGSL_MEMSTORE_OFFSET(
+						KGSL_MEMSTORE_GLOBAL,
+						ts_cmp_enable), 0);
+			wmb();
+		}
+
+		KGSL_CMD_WARN(device, "<%d:0x%x> ringbuffer interrupt\n",
+				context_id, timestamp);
+	}
+
 	for (i = 0; i < ARRAY_SIZE(kgsl_cp_error_irqs); i++) {
 		if (status & kgsl_cp_error_irqs[i].mask) {
 			KGSL_CMD_CRIT(rb->device, "%s\n",
@@ -1727,7 +1765,6 @@ static void a2xx_cp_intrcallback(struct kgsl_device *device)
 	adreno_regwrite(device, REG_CP_INT_ACK, status);
 
 	if (status & (CP_INT_CNTL__IB1_INT_MASK | CP_INT_CNTL__RB_INT_MASK)) {
-		KGSL_CMD_WARN(rb->device, "ringbuffer ib1/rb interrupt\n");
 		queue_work(device->work_queue, &device->ts_expired_ws);
 		wake_up_interruptible_all(&device->wait_queue);
 		atomic_notifier_call_chain(&(device->ts_notifier_list),
@@ -1818,26 +1855,16 @@ static void a2xx_irq_control(struct adreno_device *adreno_dev, int state)
 	wmb();
 }
 
-static unsigned int a2xx_irq_pending(struct adreno_device *adreno_dev)
-{
-	struct kgsl_device *device = &adreno_dev->dev;
-	unsigned int rbbm, cp, mh;
-
-	adreno_regread(device, REG_RBBM_INT_CNTL, &rbbm);
-	adreno_regread(device, REG_CP_INT_CNTL, &cp);
-	adreno_regread(device, MH_INTERRUPT_MASK, &mh);
-
-	return ((rbbm & RBBM_INT_MASK) || (cp & CP_INT_MASK) ||
-		(mh & kgsl_mmu_get_int_mask())) ? 1 : 0;
-}
-
-static void a2xx_rb_init(struct adreno_device *adreno_dev,
+static int a2xx_rb_init(struct adreno_device *adreno_dev,
 			struct adreno_ringbuffer *rb)
 {
 	unsigned int *cmds, cmds_gpu;
 
 	/* ME_INIT */
 	cmds = adreno_ringbuffer_allocspace(rb, NULL, 19);
+	if (cmds == NULL)
+		return -ENOMEM;
+
 	cmds_gpu = rb->buffer_desc.gpuaddr + sizeof(uint)*(rb->wptr-19);
 
 	GSL_RB_WRITE(cmds, cmds_gpu, cp_type3_packet(CP_ME_INIT, 18));
@@ -1890,6 +1917,8 @@ static void a2xx_rb_init(struct adreno_device *adreno_dev,
 	GSL_RB_WRITE(cmds, cmds_gpu, 0x00000000);
 
 	adreno_ringbuffer_submit(rb);
+
+	return 0;
 }
 
 static unsigned int a2xx_busy_cycles(struct adreno_device *adreno_dev)
@@ -2026,7 +2055,6 @@ struct adreno_gpudev adreno_a2xx_gpudev = {
 	.ctxt_draw_workaround = a2xx_drawctxt_draw_workaround,
 	.irq_handler = a2xx_irq_handler,
 	.irq_control = a2xx_irq_control,
-	.irq_pending = a2xx_irq_pending,
 	.snapshot = a2xx_snapshot,
 	.rb_init = a2xx_rb_init,
 	.busy_cycles = a2xx_busy_cycles,

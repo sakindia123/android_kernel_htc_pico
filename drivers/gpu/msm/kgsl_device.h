@@ -14,7 +14,11 @@
 #define __KGSL_DEVICE_H
 
 #include <linux/idr.h>
+#ifdef CONFIG_KGSL_COMPAT
+#include <linux/pm_qos_params.h>
+#else
 #include <linux/pm_qos.h>
+#endif
 #include <linux/earlysuspend.h>
 
 #include "kgsl.h"
@@ -24,10 +28,9 @@
 #include "kgsl_pwrscale.h"
 #include <linux/sync.h>
 
-#define KGSL_TIMEOUT_NONE           0
-#define KGSL_TIMEOUT_DEFAULT        0xFFFFFFFF
-#define KGSL_TIMEOUT_PART           50 /* 50 msec */
-#define KGSL_TIMEOUT_LONG_IB_DETECTION  2000 /* 2 sec*/
+#define KGSL_TIMEOUT_NONE       0
+#define KGSL_TIMEOUT_DEFAULT    0xFFFFFFFF
+#define KGSL_TIMEOUT_PART       2000 /* 2 sec */
 
 #define FIRST_TIMEOUT (HZ / 2)
 
@@ -47,7 +50,7 @@
 #define KGSL_STATE_SLEEP	0x00000008
 #define KGSL_STATE_SUSPEND	0x00000010
 #define KGSL_STATE_HUNG		0x00000020
-#define KGSL_STATE_DUMP_AND_FT	0x00000040
+#define KGSL_STATE_DUMP_AND_RECOVER	0x00000040
 #define KGSL_STATE_SLUMBER	0x00000080
 
 #define KGSL_GRAPHICS_MEMORY_LOW_WATERMARK  0x1000000
@@ -171,7 +174,7 @@ struct kgsl_device {
 	wait_queue_head_t wait_queue;
 	struct workqueue_struct *work_queue;
 	struct device *parentdev;
-	struct completion ft_gate;
+	struct completion recovery_gate;
 	struct dentry *d_debugfs;
 	struct idr context_idr;
 	struct early_suspend display_off;
@@ -197,11 +200,13 @@ struct kgsl_device {
 	int drv_log;
 	int mem_log;
 	int pwr_log;
-	int ft_log;
-	int pm_dump_enable;
 	struct kgsl_pwrscale pwrscale;
 	struct kobject pwrscale_kobj;
+#ifdef CONFIG_KGSL_COMPAT
+	struct pm_qos_request_list pm_qos_req_dma;
+#else
 	struct pm_qos_request pm_qos_req_dma;
+#endif
 	struct work_struct ts_expired_ws;
 	struct list_head events;
 	struct list_head events_pending_list;
@@ -210,6 +215,7 @@ struct kgsl_device {
 	/* Postmortem Control switches */
 	int pm_regs_enabled;
 	int pm_ib_enabled;
+	uint32_t fence_event_counter;
 };
 
 void kgsl_process_events(struct work_struct *work);
@@ -218,7 +224,7 @@ void kgsl_check_fences(struct work_struct *work);
 #define KGSL_DEVICE_COMMON_INIT(_dev) \
 	.hwaccess_gate = COMPLETION_INITIALIZER((_dev).hwaccess_gate),\
 	.suspend_gate = COMPLETION_INITIALIZER((_dev).suspend_gate),\
-	.ft_gate = COMPLETION_INITIALIZER((_dev).ft_gate),\
+	.recovery_gate = COMPLETION_INITIALIZER((_dev).recovery_gate),\
 	.ts_notifier_list = ATOMIC_NOTIFIER_INIT((_dev).ts_notifier_list),\
 	.idle_check_ws = __WORK_INITIALIZER((_dev).idle_check_ws,\
 			kgsl_idle_check),\
@@ -261,23 +267,8 @@ struct kgsl_context {
 	struct list_head events_list;
 };
 
-/**
- * struct kgsl_process_private -  Private structure for a KGSL process (across
- * all devices)
- * @priv: Internal flags, use KGSL_PROCESS_* values
- * @pid: ID for the task owner of the process
- * @mem_lock: Spinlock to protect the process memory lists
- * @refcount: kref object for reference counting the process
- * @process_private_mutex: Mutex to synchronize access to the process struct
- * @mem_rb: RB tree node for the memory owned by this process
- * @idr: Iterator for assigning IDs to memory allocations
- * @pagetable: Pointer to the pagetable owned by this process
- * @kobj: Pointer to a kobj for the sysfs directory for this process
- * @debug_root: Pointer to the debugfs root for this process
- * @stats: Memory allocation statistics for this process
- */
 struct kgsl_process_private {
-	unsigned long priv;
+	unsigned int refcnt;
 	pid_t pid;
 	spinlock_t mem_lock;
 
@@ -287,6 +278,7 @@ struct kgsl_process_private {
 	struct mutex process_private_mutex;
 
 	struct rb_root mem_rb;
+	struct idr mem_idr;
 	struct kgsl_pagetable *pagetable;
 	struct list_head list;
 	struct kobject kobj;
@@ -296,14 +288,6 @@ struct kgsl_process_private {
 		unsigned int cur;
 		unsigned int max;
 	} stats[KGSL_MEM_ENTRY_MAX];
-};
-
-/**
- * enum kgsl_process_priv_flags - Private flags for kgsl_process_private
- * @KGSL_PROCESS_INIT: Set if the process structure has been set up
- */
-enum kgsl_process_priv_flags {
-	KGSL_PROCESS_INIT = 0,
 };
 
 struct kgsl_device_private {
@@ -471,25 +455,6 @@ static inline void
 kgsl_context_put(struct kgsl_context *context)
 {
 	kref_put(&context->refcount, kgsl_context_destroy);
-}
-
-/**
- * kgsl_active_count_put - Decrease the device active count
- * @device: Pointer to a KGSL device
- *
- * Decrease the active count for the KGSL device and trigger the suspend_gate
- * completion if it hits zero
- */
-static inline void
-kgsl_active_count_put(struct kgsl_device *device)
-{
-	if (device->active_cnt == 1)
-		INIT_COMPLETION(device->suspend_gate);
-
-	device->active_cnt--;
-
-	if (device->active_cnt == 0)
-		complete(&device->suspend_gate);
 }
 
 #endif  /* __KGSL_DEVICE_H */

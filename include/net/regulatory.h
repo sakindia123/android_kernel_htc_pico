@@ -59,7 +59,6 @@ struct regulatory_request {
 	int wiphy_idx;
 	enum nl80211_reg_initiator initiator;
 	char alpha2[2];
-	u8 dfs_region;
 	bool intersect;
 	bool processed;
 	enum environment_cap country_ie_env;
@@ -86,7 +85,6 @@ struct ieee80211_reg_rule {
 struct ieee80211_regdomain {
 	u32 n_reg_rules;
 	char alpha2[2];
-	u8 dfs_region;
 	struct ieee80211_reg_rule reg_rules[];
 };
 

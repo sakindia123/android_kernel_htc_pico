@@ -1319,7 +1319,7 @@ int get_img(struct mdp_img *img, struct mdp_blit_req *req,
 	}
 
 #ifdef CONFIG_ION_MSM
-	*ihdlp = ion_import_fd(mfd->iclient, img->memory_id);
+	*ihdlp = ion_import_dma_buf(mfd->iclient, img->memory_id);
 	if (IS_ERR_OR_NULL(*ihdlp))
 		return -1;
 

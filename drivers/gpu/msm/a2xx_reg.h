@@ -1,4 +1,4 @@
-/* Copyright (c) 2002,2007-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2002,2007-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -291,6 +291,10 @@ union reg_cp_rb_cntl {
 #define REG_RBBM_PERFCOUNTER1_HI         0x0398
 #define REG_RBBM_PERFCOUNTER1_LO         0x0397
 
+#define REG_SQ_PERFCOUNTER3_SELECT       0x0DCB
+#define REG_SQ_PERFCOUNTER3_LO           0x0DD2
+#define REG_SQ_PERFCOUNTER3_HI           0x0DD3
+
 #define REG_MASTER_INT_SIGNAL            0x03B7
 
 #define REG_PA_CL_VPORT_XSCALE           0x210F
@@ -341,7 +345,6 @@ union reg_cp_rb_cntl {
 #define REG_RB_MODECONTROL               0x2208
 #define REG_RB_SURFACE_INFO              0x2000
 #define REG_RB_SAMPLE_POS                0x220a
-#define REG_RB_BC_CONTROL                0x0F01
 
 #define REG_SCRATCH_ADDR                 0x01DD
 #define REG_SCRATCH_REG0                 0x0578

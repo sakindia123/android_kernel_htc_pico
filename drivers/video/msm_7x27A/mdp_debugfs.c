@@ -1,4 +1,4 @@
-/* Copyright (c) 2009-2011, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2009-2012, Code Aurora Forum. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -45,14 +45,10 @@ static uint32	mdp_count;
 
 static char	debug_buf[MDP_DEBUG_BUF];
 
-/*
- * MDP4
- *
- */
 
 static int mdp_offset_open(struct inode *inode, struct file *file)
 {
-	/* non-seekable */
+	
 	file->f_mode &= ~(FMODE_LSEEK | FMODE_PREAD | FMODE_PWRITE);
 	return 0;
 }
@@ -76,7 +72,7 @@ static ssize_t mdp_offset_write(
 	if (copy_from_user(debug_buf, buff, count))
 		return -EFAULT;
 
-	debug_buf[count] = 0;	/* end of string */
+	debug_buf[count] = 0;	
 
 	sscanf(debug_buf, "%x %d", &off, &cnt);
 
@@ -102,7 +98,7 @@ static ssize_t mdp_offset_read(
 
 
 	if (*ppos)
-		return 0;	/* the end */
+		return 0;	
 
 	len = snprintf(debug_buf, sizeof(debug_buf), "0x%08x %d\n",
 					mdp_offset, mdp_count);
@@ -112,7 +108,7 @@ static ssize_t mdp_offset_read(
 	if (copy_to_user(buff, debug_buf, len))
 		return -EFAULT;
 
-	*ppos += len;	/* increase offset */
+	*ppos += len;	
 
 	return len;
 }
@@ -126,7 +122,7 @@ static const struct file_operations mdp_off_fops = {
 
 static int mdp_reg_open(struct inode *inode, struct file *file)
 {
-	/* non-seekable */
+	
 	file->f_mode &= ~(FMODE_LSEEK | FMODE_PREAD | FMODE_PWRITE);
 	return 0;
 }
@@ -151,7 +147,7 @@ static ssize_t mdp_reg_write(
 	if (copy_from_user(debug_buf, buff, count))
 		return -EFAULT;
 
-	debug_buf[count] = 0;	/* end of string */
+	debug_buf[count] = 0;	
 
 	cnt = sscanf(debug_buf, "%x %x", &off, &data);
 
@@ -178,7 +174,7 @@ static ssize_t mdp_reg_read(
 
 
 	if (*ppos)
-		return 0;	/* the end */
+		return 0;	
 
 	j = 0;
 	num = 0;
@@ -218,7 +214,7 @@ static ssize_t mdp_reg_read(
 	if (copy_to_user(buff, debug_buf, tot))
 		return -EFAULT;
 
-	*ppos += tot;	/* increase offset */
+	*ppos += tot;	
 
 	return tot;
 }
@@ -234,7 +230,7 @@ static const struct file_operations mdp_reg_fops = {
 #ifdef CONFIG_FB_MSM_MDP40
 static int mdp_stat_open(struct inode *inode, struct file *file)
 {
-	/* non-seekable */
+	
 	file->f_mode &= ~(FMODE_LSEEK | FMODE_PREAD | FMODE_PWRITE);
 	return 0;
 }
@@ -256,7 +252,7 @@ static ssize_t mdp_stat_write(
 		return -EFAULT;
 
 	spin_lock_irqsave(&mdp_spin_lock, flag);
-	memset((char *)&mdp4_stat, 0 , sizeof(mdp4_stat));	/* reset */
+	memset((char *)&mdp4_stat, 0 , sizeof(mdp4_stat));	
 	spin_unlock_irqrestore(&mdp_spin_lock, flag);
 
 	return count;
@@ -275,7 +271,7 @@ static ssize_t mdp_stat_read(
 
 
 	if (*ppos)
-		return 0;	/* the end */
+		return 0;	
 
 	bp = debug_buf;
 	dlen = sizeof(debug_buf);
@@ -295,6 +291,10 @@ static ssize_t mdp_stat_read(
 	dlen -= len;
 	len = snprintf(bp, dlen, "int_overlay1: %08lu\n",
 					mdp4_stat.intr_overlay1);
+	bp += len;
+	dlen -= len;
+	len = snprintf(bp, dlen, "int_overlay1: %08lu\n",
+					mdp4_stat.intr_overlay2);
 	bp += len;
 	dlen -= len;
 
@@ -333,7 +333,7 @@ static ssize_t mdp_stat_read(
 	bp += len;
 	dlen -= len;
 	len = snprintf(bp, dlen, "read_ptr: %08lu\n\n",
-					mdp4_stat.intr_rd_ptr);
+					mdp4_stat.intr_rdptr);
 	bp += len;
 	dlen -= len;
 	len = snprintf(bp, dlen, "dsi:\n");
@@ -408,8 +408,12 @@ static ssize_t mdp_stat_read(
 					mdp4_stat.overlay_unset[0]);
 	bp += len;
 	dlen -= len;
-	len = snprintf(bp, dlen, "play:  %08lu\n",
+	len = snprintf(bp, dlen, "play:  %08lu\t",
 					mdp4_stat.overlay_play[0]);
+	bp += len;
+	dlen -= len;
+	len = snprintf(bp, dlen, "commit:  %08lu\n",
+					mdp4_stat.overlay_commit[0]);
 	bp += len;
 	dlen -= len;
 
@@ -424,37 +428,78 @@ static ssize_t mdp_stat_read(
 					mdp4_stat.overlay_unset[1]);
 	bp += len;
 	dlen -= len;
-	len = snprintf(bp, dlen, "play:  %08lu\n\n",
+	len = snprintf(bp, dlen, "play:  %08lu\t",
 					mdp4_stat.overlay_play[1]);
 
+	bp += len;
+	dlen -= len;
+	len = snprintf(bp, dlen, "commit:  %08lu\n\n",
+					mdp4_stat.overlay_commit[1]);
 	bp += len;
 	dlen -= len;
 
 	len = snprintf(bp, dlen, "frame_push:\n");
 	bp += len;
 	dlen -= len;
-	len = snprintf(bp, dlen, "rgb1:  %08lu\t\t", mdp4_stat.pipe[0]);
+	len = snprintf(bp, dlen, "vg1 :   %08lu\t", mdp4_stat.pipe[0]);
 	bp += len;
 	dlen -= len;
-	len = snprintf(bp, dlen, "rgb2:  %08lu\n", mdp4_stat.pipe[1]);
+	len = snprintf(bp, dlen, "vg2 :   %08lu\t", mdp4_stat.pipe[1]);
 	bp += len;
 	dlen -= len;
-	len = snprintf(bp, dlen, "vg1:   %08lu\t\t", mdp4_stat.pipe[2]);
+	len = snprintf(bp, dlen, "vg3 :   %08lu\n", mdp4_stat.pipe[5]);
 	bp += len;
 	dlen -= len;
-	len = snprintf(bp, dlen, "vg2:   %08lu\n", mdp4_stat.pipe[3]);
+	len = snprintf(bp, dlen, "rgb1:   %08lu\t", mdp4_stat.pipe[2]);
 	bp += len;
 	dlen -= len;
-	len = snprintf(bp, dlen, "err_mixer: %08lu\t", mdp4_stat.err_mixer);
+	len = snprintf(bp, dlen, "rgb2:   %08lu\t", mdp4_stat.pipe[3]);
 	bp += len;
 	dlen -= len;
-	len = snprintf(bp, dlen, "err_size : %08lu\n", mdp4_stat.err_size);
+	len = snprintf(bp, dlen, "rgb3:   %08lu\n\n", mdp4_stat.pipe[4]);
 	bp += len;
 	dlen -= len;
-	len = snprintf(bp, dlen, "err_scale: %08lu\t", mdp4_stat.err_scale);
+	len = snprintf(bp, dlen, "wait4vsync: ");
 	bp += len;
 	dlen -= len;
-	len = snprintf(bp, dlen, "err_format: %08lu\n\n", mdp4_stat.err_format);
+	len = snprintf(bp, dlen, "mixer0 : %08lu\t", mdp4_stat.wait4vsync0);
+	bp += len;
+	dlen -= len;
+	len = snprintf(bp, dlen, "mixer1: %08lu\n\n", mdp4_stat.wait4vsync1);
+	bp += len;
+	dlen -= len;
+	len = snprintf(bp, dlen, "iommu: ");
+	bp += len;
+	dlen -= len;
+	len = snprintf(bp, dlen, "map : %08lu\t", mdp4_stat.iommu_map);
+	bp += len;
+	dlen -= len;
+	len = snprintf(bp, dlen, "unmap: %08lu\t", mdp4_stat.iommu_unmap);
+	bp += len;
+	dlen -= len;
+	len = snprintf(bp, dlen, "drop: %08lu\n\n", mdp4_stat.iommu_drop);
+	bp += len;
+	dlen -= len;
+	len = snprintf(bp, dlen, "err_mixer : %08lu\t", mdp4_stat.err_mixer);
+	bp += len;
+	dlen -= len;
+	len = snprintf(bp, dlen, "err_size  : %08lu\n", mdp4_stat.err_size);
+	bp += len;
+	dlen -= len;
+	len = snprintf(bp, dlen, "err_scale : %08lu\t", mdp4_stat.err_scale);
+	bp += len;
+	dlen -= len;
+	len = snprintf(bp, dlen, "err_format: %08lu\n", mdp4_stat.err_format);
+	bp += len;
+	dlen -= len;
+	len = snprintf(bp, dlen, "err_play  : %08lu\t", mdp4_stat.err_play);
+	bp += len;
+	dlen -= len;
+	len = snprintf(bp, dlen, "err_stage : %08lu\n", mdp4_stat.err_stage);
+	bp += len;
+	dlen -= len;
+	len = snprintf(bp, dlen, "err_underflow: %08lu\n\n",
+		       mdp4_stat.err_underflow);
 	bp += len;
 	dlen -= len;
 
@@ -496,7 +541,7 @@ static ssize_t mdp_stat_read(
 	if (copy_to_user(buff, debug_buf, tot))
 		return -EFAULT;
 
-	*ppos += tot;	/* increase offset */
+	*ppos += tot;	
 
 	return tot;
 }
@@ -509,10 +554,6 @@ static const struct file_operations mdp_stat_fops = {
 };
 #endif
 
-/*
- * MDDI
- *
- */
 
 struct mddi_reg {
 	char *name;
@@ -520,39 +561,39 @@ struct mddi_reg {
 };
 
 static struct mddi_reg mddi_regs_list[] = {
-	{"MDDI_CMD", MDDI_CMD},	 	/* 0x0000 */
-	{"MDDI_VERSION", MDDI_VERSION},  /* 0x0004 */
-	{"MDDI_PRI_PTR", MDDI_PRI_PTR},  /* 0x0008 */
-	{"MDDI_BPS",  MDDI_BPS}, 	/* 0x0010 */
-	{"MDDI_SPM", MDDI_SPM}, 	/* 0x0014 */
-	{"MDDI_INT", MDDI_INT}, 	/* 0x0018 */
-	{"MDDI_INTEN", MDDI_INTEN},	/* 0x001c */
-	{"MDDI_REV_PTR", MDDI_REV_PTR},	/* 0x0020 */
-	{"MDDI_	REV_SIZE", MDDI_REV_SIZE},/* 0x0024 */
-	{"MDDI_STAT", MDDI_STAT},	/* 0x0028 */
-	{"MDDI_REV_RATE_DIV", MDDI_REV_RATE_DIV}, /* 0x002c */
-	{"MDDI_REV_CRC_ERR", MDDI_REV_CRC_ERR}, /* 0x0030 */
-	{"MDDI_TA1_LEN", MDDI_TA1_LEN}, /* 0x0034 */
-	{"MDDI_TA2_LEN", MDDI_TA2_LEN}, /* 0x0038 */
-	{"MDDI_TEST", MDDI_TEST}, 	/* 0x0040 */
-	{"MDDI_REV_PKT_CNT", MDDI_REV_PKT_CNT}, /* 0x0044 */
-	{"MDDI_DRIVE_HI", MDDI_DRIVE_HI},/* 0x0048 */
-	{"MDDI_DRIVE_LO", MDDI_DRIVE_LO},	/* 0x004c */
-	{"MDDI_DISP_WAKE", MDDI_DISP_WAKE},/* 0x0050 */
-	{"MDDI_REV_ENCAP_SZ", MDDI_REV_ENCAP_SZ}, /* 0x0054 */
-	{"MDDI_RTD_VAL", MDDI_RTD_VAL}, /* 0x0058 */
-	{"MDDI_PAD_CTL", MDDI_PAD_CTL},	 /* 0x0068 */
-	{"MDDI_DRIVER_START_CNT", MDDI_DRIVER_START_CNT}, /* 0x006c */
-	{"MDDI_CORE_VER", MDDI_CORE_VER}, /* 0x008c */
-	{"MDDI_FIFO_ALLOC", MDDI_FIFO_ALLOC}, /* 0x0090 */
-	{"MDDI_PAD_IO_CTL", MDDI_PAD_IO_CTL}, /* 0x00a0 */
-	{"MDDI_PAD_CAL", MDDI_PAD_CAL},  /* 0x00a4 */
+	{"MDDI_CMD", MDDI_CMD},	 	
+	{"MDDI_VERSION", MDDI_VERSION},  
+	{"MDDI_PRI_PTR", MDDI_PRI_PTR},  
+	{"MDDI_BPS",  MDDI_BPS}, 	
+	{"MDDI_SPM", MDDI_SPM}, 	
+	{"MDDI_INT", MDDI_INT}, 	
+	{"MDDI_INTEN", MDDI_INTEN},	
+	{"MDDI_REV_PTR", MDDI_REV_PTR},	
+	{"MDDI_	REV_SIZE", MDDI_REV_SIZE},
+	{"MDDI_STAT", MDDI_STAT},	
+	{"MDDI_REV_RATE_DIV", MDDI_REV_RATE_DIV}, 
+	{"MDDI_REV_CRC_ERR", MDDI_REV_CRC_ERR}, 
+	{"MDDI_TA1_LEN", MDDI_TA1_LEN}, 
+	{"MDDI_TA2_LEN", MDDI_TA2_LEN}, 
+	{"MDDI_TEST", MDDI_TEST}, 	
+	{"MDDI_REV_PKT_CNT", MDDI_REV_PKT_CNT}, 
+	{"MDDI_DRIVE_HI", MDDI_DRIVE_HI},
+	{"MDDI_DRIVE_LO", MDDI_DRIVE_LO},	
+	{"MDDI_DISP_WAKE", MDDI_DISP_WAKE},
+	{"MDDI_REV_ENCAP_SZ", MDDI_REV_ENCAP_SZ}, 
+	{"MDDI_RTD_VAL", MDDI_RTD_VAL}, 
+	{"MDDI_PAD_CTL", MDDI_PAD_CTL},	 
+	{"MDDI_DRIVER_START_CNT", MDDI_DRIVER_START_CNT}, 
+	{"MDDI_CORE_VER", MDDI_CORE_VER}, 
+	{"MDDI_FIFO_ALLOC", MDDI_FIFO_ALLOC}, 
+	{"MDDI_PAD_IO_CTL", MDDI_PAD_IO_CTL}, 
+	{"MDDI_PAD_CAL", MDDI_PAD_CAL},  
 	{0, 0}
 };
 
 static int mddi_reg_open(struct inode *inode, struct file *file)
 {
-	/* non-seekable */
+	
 	file->f_mode &= ~(FMODE_LSEEK | FMODE_PREAD | FMODE_PWRITE);
 	return 0;
 }
@@ -630,7 +671,7 @@ static ssize_t pmdh_reg_write(
 	if (copy_from_user(debug_buf, buff, count))
 		return -EFAULT;
 
-	debug_buf[count] = 0;	/* end of string */
+	debug_buf[count] = 0;	
 
 	cnt = sscanf(debug_buf, "%x %x", &off, &data);
 
@@ -648,16 +689,16 @@ static ssize_t pmdh_reg_read(
 	int tot = 0;
 
 	if (*ppos)
-		return 0;	/* the end */
+		return 0;	
 
-	tot = mddi_reg_read(0);	/* pmdh */
+	tot = mddi_reg_read(0);	
 
 	if (tot < 0)
 		return 0;
 	if (copy_to_user(buff, debug_buf, tot))
 		return -EFAULT;
 
-	*ppos += tot;	/* increase offset */
+	*ppos += tot;	
 
 	return tot;
 }
@@ -675,7 +716,7 @@ static const struct file_operations pmdh_fops = {
 #if defined(CONFIG_FB_MSM_OVERLAY) && defined(CONFIG_FB_MSM_MDDI)
 static int vsync_reg_open(struct inode *inode, struct file *file)
 {
-	/* non-seekable */
+	
 	file->f_mode &= ~(FMODE_LSEEK | FMODE_PREAD | FMODE_PWRITE);
 	return 0;
 }
@@ -700,7 +741,7 @@ static ssize_t vsync_reg_write(
 	if (copy_from_user(debug_buf, buff, count))
 		return -EFAULT;
 
-	debug_buf[count] = 0;	/* end of string */
+	debug_buf[count] = 0;	
 
 	cnt = sscanf(debug_buf, "%x", &enable);
 
@@ -721,7 +762,7 @@ static ssize_t vsync_reg_read(
 	int dlen;
 
 	if (*ppos)
-		return 0;	/* the end */
+		return 0;	
 
 	bp = debug_buf;
 	dlen = sizeof(debug_buf);
@@ -734,7 +775,7 @@ static ssize_t vsync_reg_read(
 	if (copy_to_user(buff, debug_buf, tot))
 		return -EFAULT;
 
-	*ppos += tot;	/* increase offset */
+	*ppos += tot;	
 
 	return tot;
 }
@@ -763,7 +804,7 @@ static ssize_t emdh_reg_write(
 	if (copy_from_user(debug_buf, buff, count))
 		return -EFAULT;
 
-	debug_buf[count] = 0;	/* end of string */
+	debug_buf[count] = 0;	
 
 	cnt = sscanf(debug_buf, "%x %x", &off, &data);
 
@@ -781,16 +822,16 @@ static ssize_t emdh_reg_read(
 	int tot = 0;
 
 	if (*ppos)
-		return 0;	/* the end */
+		return 0;	
 
-	tot = mddi_reg_read(1);	/* emdh */
+	tot = mddi_reg_read(1);	
 
 	if (tot < 0)
 		return 0;
 	if (copy_to_user(buff, debug_buf, tot))
 		return -EFAULT;
 
-	*ppos += tot;	/* increase offset */
+	*ppos += tot;	
 
 	return tot;
 }
@@ -810,7 +851,7 @@ char *dbg_base;
 
 static int dbg_open(struct inode *inode, struct file *file)
 {
-	/* non-seekable */
+	
 	file->f_mode &= ~(FMODE_LSEEK | FMODE_PREAD | FMODE_PWRITE);
 	return 0;
 }
@@ -842,7 +883,7 @@ static ssize_t dbg_base_read(
 
 
 	if (*ppos)
-		return 0;	/* the end */
+		return 0;	
 
 
 	bp = debug_buf;
@@ -883,7 +924,7 @@ static ssize_t dbg_base_read(
 	if (copy_to_user(buff, debug_buf, tot))
 		return -EFAULT;
 
-	*ppos += tot;	/* increase offset */
+	*ppos += tot;	
 
 	return tot;
 }
@@ -909,7 +950,7 @@ static ssize_t dbg_offset_write(
 	if (copy_from_user(debug_buf, buff, count))
 		return -EFAULT;
 
-	debug_buf[count] = 0;	/* end of string */
+	debug_buf[count] = 0;	
 
 	cnt = sscanf(debug_buf, "%x %d %x", &off, &num, &base);
 
@@ -939,7 +980,7 @@ static ssize_t dbg_offset_read(
 
 
 	if (*ppos)
-		return 0;	/* the end */
+		return 0;	
 
 	len = snprintf(debug_buf, sizeof(debug_buf), "0x%08x %d 0x%08x\n",
 				dbg_offset, dbg_count, (int)dbg_base);
@@ -949,7 +990,7 @@ static ssize_t dbg_offset_read(
 	if (copy_to_user(buff, debug_buf, len))
 		return -EFAULT;
 
-	*ppos += len;	/* increase offset */
+	*ppos += len;	
 
 	return len;
 }
@@ -977,7 +1018,7 @@ static ssize_t dbg_reg_write(
 	if (copy_from_user(debug_buf, buff, count))
 		return -EFAULT;
 
-	debug_buf[count] = 0;	/* end of string */
+	debug_buf[count] = 0;	
 
 	cnt = sscanf(debug_buf, "%x %x", &off, &data);
 
@@ -1003,10 +1044,10 @@ static ssize_t dbg_reg_read(
 
 
 	if (*ppos)
-		return 0;	/* the end */
+		return 0;	
 
 	if (dbg_base == 0)
-		return 0;	/* nothing to read */
+		return 0;	
 
 	j = 0;
 	num = 0;
@@ -1045,7 +1086,7 @@ static ssize_t dbg_reg_read(
 	if (copy_to_user(buff, debug_buf, tot))
 		return -EFAULT;
 
-	*ppos += tot;	/* increase offset */
+	*ppos += tot;	
 
 	return tot;
 }
@@ -1064,7 +1105,7 @@ static uint32 hdmi_count;
 
 static int hdmi_open(struct inode *inode, struct file *file)
 {
-	/* non-seekable */
+	
 	file->f_mode &= ~(FMODE_LSEEK | FMODE_PREAD | FMODE_PWRITE);
 	return 0;
 }
@@ -1088,7 +1129,7 @@ static ssize_t hdmi_offset_write(
 	if (copy_from_user(debug_buf, buff, count))
 		return -EFAULT;
 
-	debug_buf[count] = 0;	/* end of string */
+	debug_buf[count] = 0;	
 
 	cnt = sscanf(debug_buf, "%x %d", &off, &num);
 
@@ -1116,7 +1157,7 @@ static ssize_t hdmi_offset_read(
 
 
 	if (*ppos)
-		return 0;	/* the end */
+		return 0;	
 
 	len = snprintf(debug_buf, sizeof(debug_buf), "0x%08x %d\n",
 				hdmi_offset, hdmi_count);
@@ -1126,7 +1167,7 @@ static ssize_t hdmi_offset_read(
 	if (copy_to_user(buff, debug_buf, len))
 		return -EFAULT;
 
-	*ppos += len;	/* increase offset */
+	*ppos += len;	
 
 	return len;
 }
@@ -1158,7 +1199,7 @@ static ssize_t hdmi_reg_write(
 	if (base == 0)
 		return -EFAULT;
 
-	debug_buf[count] = 0;	/* end of string */
+	debug_buf[count] = 0;	
 
 	cnt = sscanf(debug_buf, "%x %x", &off, &data);
 
@@ -1184,10 +1225,10 @@ static ssize_t hdmi_reg_read(
 
 
 	if (*ppos)
-		return 0;	/* the end */
+		return 0;	
 
 	if (hdmi_msm_get_io_base() == 0)
-		return 0;	/* nothing to read */
+		return 0;	
 
 	j = 0;
 	num = 0;
@@ -1226,7 +1267,7 @@ static ssize_t hdmi_reg_read(
 	if (copy_to_user(buff, debug_buf, tot))
 		return -EFAULT;
 
-	*ppos += tot;	/* increase offset */
+	*ppos += tot;	
 
 	return tot;
 }
@@ -1240,10 +1281,6 @@ static const struct file_operations hdmi_reg_fops = {
 };
 #endif
 
-/*
- * debugfs
- *
- */
 
 int mdp_debugfs_init(void)
 {

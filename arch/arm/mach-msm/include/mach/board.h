@@ -445,6 +445,8 @@ enum msm_mdp_hw_revision {
 	MDP_REV_40,
 	MDP_REV_41,
 	MDP_REV_42,
+	MDP_REV_43,
+	MDP_REV_44,
 };
 
 struct msm_panel_common_pdata {
@@ -482,6 +484,8 @@ struct msm_panel_common_pdata {
 #else
 	int fpga_3d_config_addr;
 	struct gamma_curvy *abl_gamma_tbl;
+	char cont_splash_enabled;
+	char mdp_iommu_split_domain;
 #endif
 };
 
@@ -514,7 +518,10 @@ struct mipi_dsi_platform_data {
 	int (*esd_fixup)(uint32_t mfd_data);
 	int (*dsi_client_reset)(void);
 	int (*get_lane_config)(void);
+	char (*splash_is_enabled)(void);
+	char dlane_swap;
 	int target_type;
+	int (*lcd_pre_off)(struct platform_device *pdev);
 };
 
 enum mipi_dsi_3d_ctrl {
@@ -538,8 +545,11 @@ struct mipi_dsi_panel_platform_data {
 	int fpga_3d_config_addr;
 	int *gpio;
 	struct mipi_dsi_phy_ctrl *phy_ctrl_settings;
+	void (*dsi_pwm_cfg)(void);
 };
 
+
+#define PANEL_NAME_MAX_LEN 50
 struct msm_fb_platform_data {
 	int (*detect_client)(const char *name);
 	int mddi_prescan;
@@ -548,6 +558,9 @@ struct msm_fb_platform_data {
 	uint32_t width;
 	uint32_t height;
 	bool     is_3d_panel;
+	unsigned char ext_resolution;
+	char prim_panel_name[PANEL_NAME_MAX_LEN];
+	char ext_panel_name[PANEL_NAME_MAX_LEN];
 };
 
 #ifdef CONFIG_FB_MSM8960

@@ -1,4 +1,4 @@
-/* Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -17,6 +17,8 @@
 static struct dsi_buf simulator_tx_buf;
 static struct dsi_buf simulator_rx_buf;
 static struct msm_panel_common_pdata *mipi_simulator_pdata;
+
+static int mipi_simulator_lcd_init(void);
 
 static char display_on[2]  = {0x00, 0x00};
 static char display_off[2] = {0x00, 0x00};
@@ -47,7 +49,7 @@ static int mipi_simulator_lcd_on(struct platform_device *pdev)
 		 mipi->mode);
 
 	if (mipi->mode == DSI_VIDEO_MODE) {
-		mipi_dsi_cmds_tx(mfd, &simulator_tx_buf, display_on_cmds,
+		mipi_dsi_cmds_tx(&simulator_tx_buf, display_on_cmds,
 			ARRAY_SIZE(display_on_cmds));
 	} else {
 		pr_err("%s:%d, CMD MODE NOT SUPPORTED", __func__, __LINE__);
@@ -73,7 +75,7 @@ static int mipi_simulator_lcd_off(struct platform_device *pdev)
 	pr_debug("%s:%d, debug info", __func__, __LINE__);
 
 	if (mipi->mode == DSI_VIDEO_MODE) {
-		mipi_dsi_cmds_tx(mfd, &simulator_tx_buf, display_off_cmds,
+		mipi_dsi_cmds_tx(&simulator_tx_buf, display_off_cmds,
 			ARRAY_SIZE(display_off_cmds));
 	} else {
 		pr_debug("%s:%d, DONT REACH HERE", __func__, __LINE__);
@@ -122,6 +124,11 @@ int mipi_simulator_device_register(struct msm_panel_info *pinfo,
 	ch_used[channel] = TRUE;
 
 	pr_debug("%s:%d, debug info", __func__, __LINE__);
+	ret = mipi_simulator_lcd_init();
+	if (ret) {
+		pr_err("mipi_simulator_lcd_init() failed with ret %u\n", ret);
+		return ret;
+	}
 
 	pdev = platform_device_alloc("mipi_simulator", (panel << 8)|channel);
 	if (!pdev)
@@ -151,12 +158,10 @@ err_device_put:
 	return ret;
 }
 
-static int __init mipi_simulator_lcd_init(void)
+static int mipi_simulator_lcd_init(void)
 {
 	mipi_dsi_buf_alloc(&simulator_tx_buf, DSI_BUF_SIZE);
 	mipi_dsi_buf_alloc(&simulator_rx_buf, DSI_BUF_SIZE);
 
 	return platform_driver_register(&this_driver);
 }
-
-module_init(mipi_simulator_lcd_init);

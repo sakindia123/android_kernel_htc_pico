@@ -368,29 +368,7 @@ void mipi_novatek_set_prevent_esd(struct msm_fb_data_type *mfd)
 /* EMC workaround for LCM hang after ESD test */
 #endif
 
-void mipi_novatek_panel_type_detect(struct mipi_panel_info *mipi)
-{
-	if (panel_type == PANEL_ID_PIO_AUO) {
-		PR_DISP_INFO("%s: panel_type=PANEL_ID_PIO_AUO\n", __func__);
-		strcat(ptype, "PANEL_ID_PIO_AUO");
-		if (mipi->mode == DSI_VIDEO_MODE) {
-			mipi_power_on_cmd = pico_auo_video_on_cmds;
-			mipi_power_on_cmd_size = ARRAY_SIZE(pico_auo_video_on_cmds);
-		} else {
-			mipi_power_on_cmd = pico_auo_cmd_on_cmds;
-			mipi_power_on_cmd_size = ARRAY_SIZE(pico_auo_cmd_on_cmds);
-		}
-		mipi_power_off_cmd = novatek_display_off_cmds;
-		mipi_power_off_cmd_size = ARRAY_SIZE(novatek_display_off_cmds);
-	} else {
-		printk(KERN_ERR "%s: panel_type=0x%x not support\n", __func__, panel_type);
-		strcat(ptype, "PANEL_ID_NONE");
-	}
-	return;
-}
-
-
-static int mipi_dsi_set_backlight(struct msm_fb_data_type *mfd)
+static void mipi_dsi_set_backlight(struct msm_fb_data_type *mfd, int level)
 {
 	struct mipi_panel_info *mipi;
 
@@ -426,7 +404,7 @@ static int mipi_dsi_set_backlight(struct msm_fb_data_type *mfd)
 
 	PR_DISP_DEBUG("mipi_dsi_set_backlight > set brightness to %d\n", led_pwm1[1]);
 end:
-	return 0;
+	return;
 }
 
 static void mipi_novatek_set_backlight(struct msm_fb_data_type *mfd)
@@ -435,7 +413,7 @@ static void mipi_novatek_set_backlight(struct msm_fb_data_type *mfd)
 
 	bl_level = mfd->bl_level;
 
-	mipi_dsi_set_backlight(mfd);
+	mipi_dsi_set_backlight(mfd, bl_level);
 
 }
 
@@ -465,7 +443,7 @@ static void mipi_novatek_bkl_switch(struct msm_fb_data_type *mfd, bool on)
 				mfd->bl_level = val;
 			}
 		}
-		mipi_dsi_set_backlight(mfd);
+		mipi_dsi_set_backlight(mfd, mfd->bl_level);
 	} else {
 		mipi_status = 0;
 	}
@@ -487,11 +465,32 @@ static void mipi_novatek_bkl_ctrl(struct msm_fb_data_type *mfd, bool on)
 	htc_mdp_sem_up(&mfd->dma->mutex);
 }
 
+void mipi_novatek_panel_type_detect(struct mipi_panel_info *mipi)
+{
+if (panel_type == PANEL_ID_PIO_AUO) {
+		PR_DISP_INFO("%s: panel_type=PANEL_ID_PIO_AUO\n", __func__);
+		strcat(ptype, "PANEL_ID_PIO_AUO");
+		if (mipi->mode == DSI_VIDEO_MODE) {
+			mipi_power_on_cmd = pico_auo_video_on_cmds;
+			mipi_power_on_cmd_size = ARRAY_SIZE(pico_auo_video_on_cmds);
+		} else {
+			mipi_power_on_cmd = pico_auo_cmd_on_cmds;
+			mipi_power_on_cmd_size = ARRAY_SIZE(pico_auo_cmd_on_cmds);
+		}
+		mipi_power_off_cmd = novatek_display_off_cmds;
+		mipi_power_off_cmd_size = ARRAY_SIZE(novatek_display_off_cmds);
+	} else {
+		printk(KERN_ERR "%s: panel_type=0x%x not support\n", __func__, panel_type);
+		strcat(ptype, "PANEL_ID_NONE");
+	}
+	return;
+}
+
 static int mipi_novatek_lcd_on(struct platform_device *pdev)
 {
 	struct msm_fb_data_type *mfd;
 	struct msm_fb_panel_data *pdata = NULL;
-	struct msm_panel_info *pinfo;
+	struct mipi_panel_info *mipi;
 
 	mfd = platform_get_drvdata(pdev);
 	if (!mfd)
@@ -501,21 +500,18 @@ static int mipi_novatek_lcd_on(struct platform_device *pdev)
 	if (mfd->key != MFD_KEY)
 		return -EINVAL;
 
-	pinfo = &mfd->panel_info;
-	if (pinfo->is_3d_panel)
-		support_3d = TRUE;
+	mipi  = &mfd->panel_info.mipi;
 
-	if (mfd->init_mipi_lcd == 0) {
-		PR_DISP_DEBUG("Display On - 1st time\n");
+	if (mfd->first_init_lcd != 0) {
+		printk("Display On - 1st time\n");
 
 		if (pdata && pdata->panel_type_detect)
-			pdata->panel_type_detect(&pinfo->mipi);
+			pdata->panel_type_detect(mipi);
 
-		mfd->init_mipi_lcd = 1;
+		mfd->first_init_lcd = 0;
 
 	} else {
-		PR_DISP_DEBUG("Display On \n");
-
+		printk("Display On \n");
 		if (panel_type != PANEL_ID_NONE) {
 			PR_DISP_INFO("%s\n", ptype);
 
@@ -523,18 +519,13 @@ static int mipi_novatek_lcd_on(struct platform_device *pdev)
 			mipi_dsi_cmds_tx(mfd, &novatek_tx_buf, mipi_power_on_cmd,
 				mipi_power_on_cmd_size);
 			htc_mdp_sem_up(&mfd->dma->mutex);
-#if 0 /* mipi read command verify */
-				/* clean up ack_err_status */
-				mipi_dsi_cmd_bta_sw_trigger();
-				mipi_novatek_manufacture_id(mfd);
-#endif
 		} else {
 			printk(KERN_ERR "panel_type=0x%x not support at power on\n", panel_type);
 			return -EINVAL;
 		}
 	}
-	PR_DISP_DEBUG("Init done!\n");
 
+	PR_DISP_INFO("Init done!\n");
 	return 0;
 }
 

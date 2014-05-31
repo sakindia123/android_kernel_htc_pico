@@ -21,7 +21,6 @@
  *                         External routine declaration
  * ----------------------------------------------------------------------------- */
 extern int mipi_status;
-#define DEFAULT_BRIGHTNESS 83
 extern int bl_level_prevset;
 extern struct dsi_cmd_desc *mipi_power_on_cmd;
 extern struct dsi_cmd_desc *mipi_power_off_cmd;
@@ -438,7 +437,6 @@ void mipi_samsung_panel_type_detect(struct mipi_panel_info *mipi)
 	return;
 }
 
-
 static int mipi_samsung_lcd_on(struct platform_device *pdev)
 {
 	struct msm_fb_data_type *mfd;
@@ -455,16 +453,16 @@ static int mipi_samsung_lcd_on(struct platform_device *pdev)
 
 	mipi  = &mfd->panel_info.mipi;
 
-	if (mfd->init_mipi_lcd == 0) {
-		PR_DISP_INFO("Display On - 1st time\n");
+	if (mfd->first_init_lcd != 0) {
+		printk("Display On - 1st time\n");
 
 		if (pdata && pdata->panel_type_detect)
 			pdata->panel_type_detect(mipi);
 
-		mfd->init_mipi_lcd = 1;
+		mfd->first_init_lcd = 0;
 
 	} else {
-		PR_DISP_INFO("Display On \n");
+		printk("Display On \n");
 		if (panel_type != PANEL_ID_NONE) {
 			PR_DISP_INFO("%s\n", ptype);
 
@@ -472,18 +470,13 @@ static int mipi_samsung_lcd_on(struct platform_device *pdev)
 			mipi_dsi_cmds_tx(mfd, &samsung_tx_buf, mipi_power_on_cmd,
 				mipi_power_on_cmd_size);
 			htc_mdp_sem_up(&mfd->dma->mutex);
-#if 0 /* mipi read command verify */
-			/* clean up ack_err_status */
-			mipi_dsi_cmd_bta_sw_trigger();
-			mipi_samsung_manufacture_id(mfd);
-#endif
 		} else {
 			printk(KERN_ERR "panel_type=0x%x not support at power on\n", panel_type);
 			return -EINVAL;
 		}
 	}
-	PR_DISP_DEBUG("Init done!\n");
 
+	PR_DISP_INFO("Init done!\n");
 	return 0;
 }
 
@@ -511,7 +504,7 @@ static int mipi_samsung_lcd_off(struct platform_device *pdev)
 	return 0;
 }
 
-static int mipi_dsi_set_backlight(struct msm_fb_data_type *mfd)
+static void mipi_dsi_set_backlight(struct msm_fb_data_type *mfd, int level)
 {
 	struct mipi_panel_info *mipi;
 
@@ -520,11 +513,11 @@ static int mipi_dsi_set_backlight(struct msm_fb_data_type *mfd)
 		goto end;
 
 	if (mipi_samsung_pdata && mipi_samsung_pdata->shrink_pwm)
-		led_pwm1[1] = mipi_samsung_pdata->shrink_pwm(mfd->bl_level);
+		led_pwm1[1] = mipi_samsung_pdata->shrink_pwm(level);
 	else
-		led_pwm1[1] = (unsigned char)(mfd->bl_level);
+		led_pwm1[1] = (unsigned char)(level);
 
-	if (mfd->bl_level == 0 || board_mfg_mode() == 4 ||
+	if (level == 0 || board_mfg_mode() == 4 ||
 	    (board_mfg_mode() == 5 && !(htc_battery_get_zcharge_mode() % 2))) {
 		led_pwm1[1] = 0;
 	}
@@ -543,11 +536,11 @@ static int mipi_dsi_set_backlight(struct msm_fb_data_type *mfd)
 	htc_mdp_sem_up(&mfd->dma->mutex);
 
 	if (led_pwm1[1] != 0)
-		bl_level_prevset = mfd->bl_level;
+		bl_level_prevset = level;
 
 	PR_DISP_DEBUG("mipi_dsi_set_backlight > set brightness to %d\n", led_pwm1[1]);
 end:
-	return 0;
+	return;
 }
 
 static void mipi_samsung_set_backlight(struct msm_fb_data_type *mfd)
@@ -556,7 +549,7 @@ static void mipi_samsung_set_backlight(struct msm_fb_data_type *mfd)
 
 	bl_level = mfd->bl_level;
 
-	mipi_dsi_set_backlight(mfd);
+	mipi_dsi_set_backlight(mfd, bl_level);
 }
 
 static void mipi_samsung_display_on(struct msm_fb_data_type *mfd)
@@ -585,7 +578,7 @@ static void mipi_samsung_bkl_switch(struct msm_fb_data_type *mfd, bool on)
 				mfd->bl_level = val;
 			}
 		}
-		mipi_dsi_set_backlight(mfd);
+		mipi_dsi_set_backlight(mfd, mfd->bl_level);
 	} else {
 		mipi_status = 0;
 	}
@@ -593,7 +586,7 @@ static void mipi_samsung_bkl_switch(struct msm_fb_data_type *mfd, bool on)
 
 static void mipi_samsung_bkl_ctrl(struct msm_fb_data_type *mfd, bool on)
 {
-	PR_DISP_INFO("mipi_novatek_bkl_ctrl > on = %x\n", on);
+	PR_DISP_INFO("mipi_samsung_bkl_ctrl > on = %x\n", on);
 	htc_mdp_sem_down(current, &mfd->dma->mutex);
 	if (on) {
 		mipi_dsi_op_mode_config(DSI_CMD_MODE);

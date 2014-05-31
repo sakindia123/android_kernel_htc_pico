@@ -1,4 +1,4 @@
-/* Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -23,17 +23,20 @@
 #include <linux/fb.h>
 #include <asm/system.h>
 #include <mach/hardware.h>
+#include <mach/panel_id.h>
+#include <mach/debug_display.h>
 #include "mdp.h"
 #include "msm_fb.h"
 #include "mdp4.h"
+#include "mipi_dsi.h"
 
 #define DSI_VIDEO_BASE	0xF0000
 #define DMA_P_BASE      0x90000
 
+extern int protodcg_lcd_off2(struct platform_device *pdev);
+extern int protou_lcd_off2(struct platform_device *pdev);
 static int first_pixel_start_x;
 static int first_pixel_start_y;
-
-static int first_time_video_on = 1;
 
 static ssize_t vsync_show_event(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -102,7 +105,7 @@ int mdp_dsi_video_on(struct platform_device *pdev)
 	struct fb_var_screeninfo *var;
 	struct msm_fb_data_type *mfd;
 	int ret;
-	uint32 mask, curr;
+	uint32_t mask, curr;
 
 	mfd = (struct msm_fb_data_type *)platform_get_drvdata(pdev);
 
@@ -119,8 +122,8 @@ int mdp_dsi_video_on(struct platform_device *pdev)
 	atomic_set(&vsync_cntrl.suspend, 0);
 	bpp = fbi->var.bits_per_pixel / 8;
 	buf = (uint8 *) fbi->fix.smem_start;
-	buf += fbi->var.xoffset * bpp +
-		fbi->var.yoffset * fbi->fix.line_length;
+
+	buf += calc_fb_offset(mfd, fbi, bpp);
 
 	dma2_cfg_reg = DMA_PACK_ALIGN_LSB | DMA_OUT_SEL_DSI_VIDEO;
 
@@ -156,31 +159,29 @@ int mdp_dsi_video_on(struct platform_device *pdev)
 			mfd->panel_info.bpp);
 		return -ENODEV;
 	}
-	/* MDP cmd block enable */
+	
 	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
 
-	/* starting address */
+
+	
 	MDP_OUTP(MDP_BASE + DMA_P_BASE + 0x8, (uint32) buf);
 
-	/* active window width and height */
+	
 	MDP_OUTP(MDP_BASE + DMA_P_BASE + 0x4, ((fbi->var.yres) << 16) |
 		(fbi->var.xres));
 
-	/* buffer ystride */
+	
 	MDP_OUTP(MDP_BASE + DMA_P_BASE + 0xc, fbi->fix.line_length);
 
-	/* x/y coordinate = always 0 for lcdc */
+	
 	MDP_OUTP(MDP_BASE + DMA_P_BASE + 0x10, 0);
 
-	/* dma config */
-	curr = inpdw(MDP_BASE + 0x90000);
-	mask = 0xBFFFFFFF;
+	
+	curr = inpdw(MDP_BASE + DMA_P_BASE);
+	mask = 0x0FFFFFFF;
 	dma2_cfg_reg = (dma2_cfg_reg & mask) | (curr & ~mask);
 	MDP_OUTP(MDP_BASE + DMA_P_BASE, dma2_cfg_reg);
 
-	/*
-	 * DSI timing setting
-	 */
 	h_back_porch = var->left_margin;
 	h_front_porch = var->right_margin;
 	v_back_porch = var->upper_margin;
@@ -214,13 +215,20 @@ int mdp_dsi_video_on(struct platform_device *pdev)
 	active_v_end = active_v_start +	(var->yres) * hsync_period - 1;
 	active_v_start |= ACTIVE_START_Y_EN;
 
-	dsi_underflow_clr |= 0x80000000;	/* enable recovery */
+	dsi_underflow_clr |= 0x80000000;	
 	hsync_polarity = 0;
 	vsync_polarity = 0;
 	data_en_polarity = 0;
 
 	ctrl_polarity =	(data_en_polarity << 2) |
 		(vsync_polarity << 1) | (hsync_polarity);
+
+	if (!(mfd->cont_splash_done)) {
+		mdp_pipe_ctrl(MDP_CMD_BLOCK,
+			MDP_BLOCK_POWER_OFF, FALSE);
+		MDP_OUTP(MDP_BASE + DSI_VIDEO_BASE, 0);
+		mipi_dsi_controller_cfg(0);
+	}
 
 	MDP_OUTP(MDP_BASE + DSI_VIDEO_BASE + 0x4, hsync_ctrl);
 	MDP_OUTP(MDP_BASE + DSI_VIDEO_BASE + 0x8, vsync_period);
@@ -236,22 +244,15 @@ int mdp_dsi_video_on(struct platform_device *pdev)
 	MDP_OUTP(MDP_BASE + DSI_VIDEO_BASE + 0x30, dsi_hsync_skew);
 	MDP_OUTP(MDP_BASE + DSI_VIDEO_BASE + 0x38, ctrl_polarity);
 
-	if(first_time_video_on) {
-		first_time_video_on = 0;
-		MDP_OUTP(MDP_BASE + DSI_VIDEO_BASE, 0);
-		/*Turning off DMA_P block*/
-		mdp_pipe_ctrl(MDP_DMA2_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
-		mdelay(1);
-	}
 	ret = panel_next_on(pdev);
 	if (ret == 0) {
-		/* enable DSI block */
+		
 		MDP_OUTP(MDP_BASE + DSI_VIDEO_BASE, 1);
-		/*Turning on DMA_P block*/
+		
 		mdp_pipe_ctrl(MDP_DMA2_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
 	}
 
-	/* MDP cmd block disable */
+	
 	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
 
 	if (!vsync_cntrl.sysfs_created) {
@@ -267,6 +268,7 @@ int mdp_dsi_video_on(struct platform_device *pdev)
 		pr_debug("%s: kobject_uevent(KOBJ_ADD)\n", __func__);
 		vsync_cntrl.sysfs_created = 1;
 	}
+	mdp_histogram_ctrl_all(TRUE);
 
 	return ret;
 }
@@ -274,12 +276,49 @@ int mdp_dsi_video_on(struct platform_device *pdev)
 int mdp_dsi_video_off(struct platform_device *pdev)
 {
 	int ret = 0;
-	/* MDP cmd block enable */
+	int retry_cnt = 0;
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)platform_get_drvdata(pdev);
+	PR_DISP_INFO("%s\n", __func__);
+
+	if (panel_type == PANEL_ID_PROTOU_LG || panel_type == PANEL_ID_PROTODCG_LG) {
+		if(!mfd) {
+			PR_DISP_ERR("mdp_dsi_video_off: mfd is NULL\n");
+			return -ENODEV;
+		}
+
+		do {
+			memset(mfd->fbi->screen_base, 0x00, mfd->fbi->fix.smem_len);
+			hr_msleep(80);
+
+#ifdef CONFIG_MACH_DUMMY
+			ret = protodcg_lcd_off2(pdev);
+#elif defined CONFIG_MACH_PROTOU
+			ret = protou_lcd_off2(pdev);
+#else
+#endif
+
+			if (ret < 0) {
+				panel_next_off(pdev);
+				hr_msleep(2);
+				panel_next_on(pdev);
+				hr_msleep(5);
+				retry_cnt++;
+			} else {
+				ret = 0;
+				break;
+			}
+		} while (retry_cnt < 10);
+		PR_DISP_INFO("%s : mipi_lg_lcd_off retry_cnt = %d\n", __func__, retry_cnt);
+		hr_msleep(20);
+	}
+
+	mdp_histogram_ctrl_all(FALSE);
+	
 	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
 	MDP_OUTP(MDP_BASE + DSI_VIDEO_BASE, 0);
-	/* MDP cmd block disable */
+	
 	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
-	/*Turning off DMA_P block*/
+	
 	mdp_pipe_ctrl(MDP_DMA2_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
 
 	ret = panel_next_off(pdev);
@@ -287,7 +326,7 @@ int mdp_dsi_video_off(struct platform_device *pdev)
 	atomic_set(&vsync_cntrl.suspend, 1);
 	atomic_set(&vsync_cntrl.vsync_resume, 0);
 	complete_all(&vsync_cntrl.vsync_wait);
-	/* delay to make sure the last frame finishes */
+	
 	msleep(20);
 
 	return ret;
@@ -305,20 +344,22 @@ void mdp_dma_video_vsync_ctrl(int enable)
 		INIT_COMPLETION(vsync_cntrl.vsync_wait);
 
 	vsync_cntrl.vsync_irq_enabled = enable;
-	if (!enable)
-		vsync_cntrl.disabled_clocks = 0;
 	disabled_clocks = vsync_cntrl.disabled_clocks;
 	spin_unlock_irqrestore(&mdp_spin_lock, flag);
 
-	if (enable && disabled_clocks) {
+	if (enable && disabled_clocks)
 		mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
-		spin_lock_irqsave(&mdp_spin_lock, flag);
+
+	spin_lock_irqsave(&mdp_spin_lock, flag);
+	if (enable && vsync_cntrl.disabled_clocks) {
 		outp32(MDP_INTR_CLEAR, LCDC_FRAME_START);
 		mdp_intr_mask |= LCDC_FRAME_START;
 		outp32(MDP_INTR_ENABLE, mdp_intr_mask);
 		mdp_enable_irq(MDP_VSYNC_TERM);
-		spin_unlock_irqrestore(&mdp_spin_lock, flag);
+		vsync_cntrl.disabled_clocks = 0;
 	}
+	spin_unlock_irqrestore(&mdp_spin_lock, flag);
+
 	if (vsync_cntrl.vsync_irq_enabled &&
 		atomic_read(&vsync_cntrl.suspend) == 0)
 		atomic_set(&vsync_cntrl.vsync_resume, 1);
@@ -335,16 +376,17 @@ void mdp_dsi_video_update(struct msm_fb_data_type *mfd)
 	if (!mfd->panel_power_on)
 		return;
 
-	down(&mfd->dma->mutex);
+	htc_mdp_sem_down(current, &mfd->dma->mutex);
 
 	bpp = fbi->var.bits_per_pixel / 8;
 	buf = (uint8 *) fbi->fix.smem_start;
-	buf += fbi->var.xoffset * bpp +
-		fbi->var.yoffset * fbi->fix.line_length;
-	/* no need to power on cmd block since it's dsi mode */
-	/* starting address */
+
+	buf += calc_fb_offset(mfd, fbi, bpp);
+
+	
+	
 	MDP_OUTP(MDP_BASE + DMA_P_BASE + 0x8, (uint32) buf);
-	/* enable  irq */
+	
 	spin_lock_irqsave(&mdp_spin_lock, flag);
 	mdp_enable_irq(irq_block);
 	INIT_COMPLETION(mfd->dma->comp);
@@ -357,5 +399,5 @@ void mdp_dsi_video_update(struct msm_fb_data_type *mfd)
 	spin_unlock_irqrestore(&mdp_spin_lock, flag);
 	wait_for_completion_killable(&mfd->dma->comp);
 	mdp_disable_irq(irq_block);
-	up(&mfd->dma->mutex);
+	htc_mdp_sem_up(&mfd->dma->mutex);
 }

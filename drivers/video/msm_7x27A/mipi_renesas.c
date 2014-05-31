@@ -1,4 +1,4 @@
-/* Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -15,12 +15,14 @@
 #include "mipi_renesas.h"
 #include <mach/socinfo.h>
 
-#define RENESAS_CMD_DELAY 0 /* 50 */
+#define RENESAS_CMD_DELAY 0 
 #define RENESAS_SLEEP_OFF_DELAY 50
 static struct msm_panel_common_pdata *mipi_renesas_pdata;
 
 static struct dsi_buf renesas_tx_buf;
 static struct dsi_buf renesas_rx_buf;
+
+static int mipi_renesas_lcd_init(void);
 
 static char config_sleep_out[2] = {0x11, 0x00};
 static char config_CMD_MODE[2] = {0x40, 0x01};
@@ -37,8 +39,6 @@ static char config_DBICTYPE[2] = {0x49, 0x00};
 static char config_DBICSET1[2] = {0x4a, 0x1c};
 static char config_DBICADD[2] = {0x4b, 0x00};
 static char config_DBICCTL[2] = {0x4e, 0x01};
-/* static char config_COLMOD_565[2] = {0x3a, 0x05}; */
-/* static char config_COLMOD_666PACK[2] = {0x3a, 0x06}; */
 static char config_COLMOD_888[2] = {0x3a, 0x07};
 static char config_MADCTL[2] = {0x36, 0x00};
 static char config_DBIOC[2] = {0x82, 0x40};
@@ -185,7 +185,7 @@ static struct dsi_cmd_desc renesas_sleep_off_cmds[] = {
 };
 
 static struct dsi_cmd_desc renesas_display_off_cmds[] = {
-	/* Choosing Command Mode */
+	
 	{DTYPE_DCS_WRITE1, 1, 0, 0, RENESAS_CMD_DELAY,
 		sizeof(config_CMD_MODE), config_CMD_MODE },
 
@@ -204,8 +204,6 @@ static struct dsi_cmd_desc renesas_display_off_cmds[] = {
 	{DTYPE_DCS_WRITE1, 1, 0, 0, RENESAS_CMD_DELAY * 2,
 		sizeof(config_DBICSET_15), config_DBICSET_15},
 
-	/* After waiting >= 5 frames, turn OFF RGB signals
-	This is done by on DSI/MDP (depends on Vid/Cmd Mode.  */
 	{DTYPE_DCS_WRITE1, 1, 0, 0, RENESAS_CMD_DELAY,
 		sizeof(config_DBICADD70), config_DBICADD70},
 	{DTYPE_DCS_LWRITE, 1, 0, 0, RENESAS_CMD_DELAY,
@@ -255,7 +253,7 @@ static struct dsi_cmd_desc renesas_display_off_cmds[] = {
 };
 
 static struct dsi_cmd_desc renesas_display_on_cmds[] = {
-	/* Choosing Command Mode */
+	
 	{DTYPE_DCS_WRITE1, 1, 0, 0, RENESAS_CMD_DELAY,
 		sizeof(config_CMD_MODE), config_CMD_MODE },
 	{DTYPE_DCS_LWRITE, 1, 0, 0, RENESAS_CMD_DELAY,
@@ -286,7 +284,7 @@ static struct dsi_cmd_desc renesas_display_on_cmds[] = {
 		sizeof(config_DBICCTL), config_DBICCTL},
 	{DTYPE_DCS_WRITE1, 1, 0, 0, RENESAS_CMD_DELAY,
 		sizeof(config_COLMOD_888), config_COLMOD_888},
-	/* Choose config_COLMOD_565 or config_COLMOD_666PACK for other modes */
+	
 	{DTYPE_DCS_WRITE1, 1, 0, 0, RENESAS_CMD_DELAY,
 		sizeof(config_MADCTL), config_MADCTL},
 	{DTYPE_DCS_WRITE1, 1, 0, 0, RENESAS_CMD_DELAY,
@@ -1091,7 +1089,7 @@ static struct dsi_cmd_desc renesas_display_on_cmds[] = {
 		sizeof(config_Power_Ctrl_2c_cmd),
 			config_Power_Ctrl_2c_cmd},
 
-	{DTYPE_DCS_WRITE1, 1, 0, 0, 0/* RENESAS_CMD_DELAY */,
+	{DTYPE_DCS_WRITE1, 1, 0, 0, 0,
 		sizeof(config_DBICSET_15), config_DBICSET_15},
 
 };
@@ -1129,23 +1127,23 @@ static int mipi_renesas_lcd_on(struct platform_device *pdev)
 	if (mfd->key != MFD_KEY)
 		return -EINVAL;
 
-	mipi_dsi_cmds_tx(mfd, &renesas_tx_buf, renesas_sleep_off_cmds,
+	mipi_dsi_cmds_tx(&renesas_tx_buf, renesas_sleep_off_cmds,
 			ARRAY_SIZE(renesas_sleep_off_cmds));
 
 	mipi_set_tx_power_mode(1);
-	mipi_dsi_cmds_tx(mfd, &renesas_tx_buf, renesas_display_on_cmds,
+	mipi_dsi_cmds_tx(&renesas_tx_buf, renesas_display_on_cmds,
 			ARRAY_SIZE(renesas_display_on_cmds));
 
-	if (cpu_is_msm7x25a() || cpu_is_msm7x25aa()) {
-		mipi_dsi_cmds_tx(mfd, &renesas_tx_buf, renesas_hvga_on_cmds,
+	if (cpu_is_msm7x25a() || cpu_is_msm7x25aa() || cpu_is_msm7x25ab()) {
+		mipi_dsi_cmds_tx(&renesas_tx_buf, renesas_hvga_on_cmds,
 			ARRAY_SIZE(renesas_hvga_on_cmds));
 	}
 
 	if (mipi->mode == DSI_VIDEO_MODE)
-		mipi_dsi_cmds_tx(mfd, &renesas_tx_buf, renesas_video_on_cmds,
+		mipi_dsi_cmds_tx(&renesas_tx_buf, renesas_video_on_cmds,
 			ARRAY_SIZE(renesas_video_on_cmds));
 	else
-		mipi_dsi_cmds_tx(mfd, &renesas_tx_buf, renesas_cmd_on_cmds,
+		mipi_dsi_cmds_tx(&renesas_tx_buf, renesas_cmd_on_cmds,
 			ARRAY_SIZE(renesas_cmd_on_cmds));
 	mipi_set_tx_power_mode(0);
 
@@ -1163,7 +1161,7 @@ static int mipi_renesas_lcd_off(struct platform_device *pdev)
 	if (mfd->key != MFD_KEY)
 		return -EINVAL;
 
-	mipi_dsi_cmds_tx(mfd, &renesas_tx_buf, renesas_display_off_cmds,
+	mipi_dsi_cmds_tx(&renesas_tx_buf, renesas_display_off_cmds,
 			ARRAY_SIZE(renesas_display_off_cmds));
 
 	return 0;
@@ -1219,6 +1217,12 @@ int mipi_renesas_device_register(struct msm_panel_info *pinfo,
 
 	ch_used[channel] = TRUE;
 
+	ret = mipi_renesas_lcd_init();
+	if (ret) {
+		pr_err("mipi_renesas_lcd_init() failed with ret %u\n", ret);
+		return ret;
+	}
+
 	pdev = platform_device_alloc("mipi_renesas", (panel << 8)|channel);
 	if (!pdev)
 		return -ENOMEM;
@@ -1245,12 +1249,10 @@ err_device_put:
 	return ret;
 }
 
-static int __init mipi_renesas_lcd_init(void)
+static int mipi_renesas_lcd_init(void)
 {
 	mipi_dsi_buf_alloc(&renesas_tx_buf, DSI_BUF_SIZE);
 	mipi_dsi_buf_alloc(&renesas_rx_buf, DSI_BUF_SIZE);
 
 	return platform_driver_register(&this_driver);
 }
-
-module_init(mipi_renesas_lcd_init);

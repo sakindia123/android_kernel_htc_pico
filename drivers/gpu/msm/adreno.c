@@ -104,9 +104,7 @@ static struct adreno_device device_3d0 = {
 			.config = ADRENO_MMU_CONFIG,
 		},
 		.pwrctrl = {
-#ifdef CONFIG_KGSL_COMPAT
 			.regulator_name = "fs_gfx3d",
-#endif
 			.irq_name = KGSL_3D0_IRQ,
 		},
 		.iomemname = KGSL_3D0_REG_MEMORY,

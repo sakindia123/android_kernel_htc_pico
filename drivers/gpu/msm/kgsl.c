@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2008-2012,2014 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1180,7 +1180,8 @@ kgsl_sharedmem_find_region(struct kgsl_process_private *private,
 		entry = rb_entry(node, struct kgsl_mem_entry, node);
 
 		if (kgsl_gpuaddr_in_memdesc(&entry->memdesc, gpuaddr, size)) {
-			kgsl_mem_entry_get(entry);
+			if (!kgsl_mem_entry_get(entry))
+				break;
 			spin_unlock(&private->mem_lock);
 			return entry;
 		}
@@ -1280,14 +1281,17 @@ kgsl_sharedmem_region_empty(struct kgsl_process_private *private,
 static inline struct kgsl_mem_entry * __must_check
 kgsl_sharedmem_find_id(struct kgsl_process_private *process, unsigned int id)
 {
+	int result = 0;
 	struct kgsl_mem_entry *entry;
 
 	rcu_read_lock();
 	entry = idr_find(&process->mem_idr, id);
 	if (entry)
-		kgsl_mem_entry_get(entry);
+		result = kgsl_mem_entry_get(entry);
 	rcu_read_unlock();
 
+	if (!result)
+		return NULL;
 	return entry;
 }
 
@@ -2380,9 +2384,6 @@ _gpumem_alloc(struct kgsl_device_private *dev_priv,
 		| KGSL_MEMALIGN_MASK
 		| KGSL_MEMFLAGS_USE_CPU_MAP;
 
-	if (!can_use_cpu_map())
-		flags &= ~KGSL_MEMFLAGS_USE_CPU_MAP;
-
 	entry = kgsl_mem_entry_create();
 	if (entry == NULL)
 		return -ENOMEM;
@@ -2880,7 +2881,8 @@ kgsl_mmap_memstore(struct kgsl_device *device, struct vm_area_struct *vma)
 static void kgsl_gpumem_vm_open(struct vm_area_struct *vma)
 {
 	struct kgsl_mem_entry *entry = vma->vm_private_data;
-	kgsl_mem_entry_get(entry);
+	if (!kgsl_mem_entry_get(entry))
+		vma->vm_private_data = NULL;
 }
 
 static int
@@ -2888,6 +2890,8 @@ kgsl_gpumem_vm_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 {
 	struct kgsl_mem_entry *entry = vma->vm_private_data;
 
+	if (!entry)
+		return VM_FAULT_SIGBUS;
 	if (!entry->memdesc.ops || !entry->memdesc.ops->vmfault)
 		return VM_FAULT_SIGBUS;
 
@@ -2898,6 +2902,9 @@ static void
 kgsl_gpumem_vm_close(struct vm_area_struct *vma)
 {
 	struct kgsl_mem_entry *entry  = vma->vm_private_data;
+
+	if (!entry)
+		return;
 
 	entry->memdesc.useraddr = 0;
 	kgsl_mem_entry_put(entry);

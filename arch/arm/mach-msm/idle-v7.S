@@ -2,7 +2,7 @@
  * Idle processing for ARMv7-based Qualcomm SoCs.
  *
  * Copyright (C) 2007 Google, Inc.
- * Copyright (c) 2007-2009, 2011 Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2007-2009, 2011-2012 The Linux Foundation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -32,6 +32,35 @@
 #endif
 
 ENTRY(msm_arch_idle)
+#ifdef CONFIG_ARCH_MSM_KRAIT
+	mrc 	p15, 0, r0, c0, c0, 0
+	bic	r1, r0, #0xff
+	movw	r2, #0x0400
+	movt	r2, #0x511F
+	movw	r3, #0x0600
+	movt	r3, #0x510F
+	cmp	r2, r1
+	cmpne	r3, r1
+	bne	go_wfi
+
+	mrs	r0, cpsr
+	cpsid	if
+
+	mrc	p15, 7, r1, c15, c0, 5
+	bic	r2, r1, #0x20000
+	mcr	p15, 7, r2, c15, c0, 5
+	isb
+
+go_wfi:
+	wfi
+	bne	wfi_done
+	mcr	p15, 7, r1, c15, c0, 5
+	isb
+	msr	cpsr_c, r0
+
+wfi_done:
+	bx	lr
+#else
 	wfi
 #ifdef CONFIG_ARCH_MSM8X60
 	mrc	p14, 1, r1, c1, c5, 4 /* read ETM PDSR to clear sticky bit */
@@ -39,6 +68,7 @@ ENTRY(msm_arch_idle)
 	isb
 #endif
 	bx	lr
+#endif
 
 ENTRY(msm_pm_collapse)
 #if defined(CONFIG_MSM_FIQ_SUPPORT)
@@ -82,11 +112,8 @@ ENTRY(msm_pm_collapse)
 	stmia   r0!, {r1-r3}
 #endif
 
-#ifdef CONFIG_MSM_DEBUG_ACROSS_PC
-	bl      msm_save_jtag_debug
-#endif
-#ifdef CONFIG_MSM_TRACE_ACROSS_PC
-	bl      etm_save_reg_check
+#ifdef CONFIG_MSM_JTAG
+	bl      msm_jtag_save_state
 #endif
 
 	ldr	r0, =msm_pm_flush_l2_flag
@@ -128,11 +155,8 @@ skip:	ldr	r0, =saved_state
 #if defined(CONFIG_MSM_FIQ_SUPPORT)
 	cpsie   f
 #endif
-#ifdef CONFIG_MSM_TRACE_ACROSS_PC
-	bl	etm_restore_reg_check
-#endif
-#ifdef CONFIG_MSM_DEBUG_ACROSS_PC
-	bl	msm_restore_jtag_debug
+#ifdef CONFIG_MSM_JTAG
+	bl	msm_jtag_restore_state
 #endif
 	ldr     r0, =saved_state        /* restore registers */
 #if (NR_CPUS >= 2)
@@ -154,12 +178,6 @@ ENTRY(msm_pm_collapse_exit)
 	/*add     r0, r0, #0x00C00000*/ /* UART3 */
 	mov     r1, #'A'
 	str     r1, [r0, #0x00C]
-#endif
-#ifdef CONFIG_ARCH_MSM7X30
-	bl	__cpu_early_init
-
-.globl _cpu_early_init_complete
-_cpu_early_init_complete:
 #endif
 	ldr     r1, =saved_state_end
 	ldr     r2, =msm_pm_collapse_exit
@@ -218,15 +236,21 @@ msm_pm_pa_to_va:
 	mcr     p15, 0, r3, c8, c7, 0   /* UTLBIALL */
 	mcr     p15, 0, r3, c7, c5, 6   /* BPIALL */
 	dsb
-
 	isb
+#ifdef CONFIG_ARCH_MSM_KRAIT
+	mrc	p15, 0, r1, c0, c0, 0
+	ldr	r3, =0xff00fc00
+	and	r3, r1, r3
+	ldr 	r1, =0x51000400
+	cmp	r3, r1
+	mrceq	p15, 7, r3, c15, c0, 2
+	biceq	r3, r3, #0x400
+	mcreq	p15, 7, r3, c15, c0, 2
+#endif
 	stmfd   sp!, {lr}
 	bl      v7_flush_kern_cache_all
-#ifdef CONFIG_MSM_TRACE_ACROSS_PC
-	bl      etm_restore_reg_check
-#endif
-#ifdef CONFIG_MSM_DEBUG_ACROSS_PC
-	bl      msm_restore_jtag_debug
+#ifdef CONFIG_MSM_JTAG
+	bl      msm_jtag_restore_state
 #endif
 	ldmfd   sp!, {lr}
 	mov     r0, #1

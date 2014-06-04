@@ -28,6 +28,7 @@ config ARCH_MSM7X27
 	select MSM_GPIOMUX
 	select REGULATOR
 	select MSM_PROC_COMM_REGULATOR
+	select MSM_PM2 if PM
 
 config ARCH_MSM7X30
 	bool "MSM7x30"
@@ -2110,6 +2111,22 @@ config MSM_SECURE_IO
 	bool
 
 config MSM_NATIVE_RESTART
+	bool
+
+config MSM_PM
+	depends on PM
+	bool
+
+config MSM_PM2
+	depends on PM
+	bool
+
+config MSM_PM8X60
+	depends on PM
+	bool
+
+config MSM_NOPM
+	default y if !PM
 	bool
 
 config MSM_BUS_SCALING

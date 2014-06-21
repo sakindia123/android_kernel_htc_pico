@@ -1595,6 +1595,7 @@ static struct ion_platform_heap pico_heaps[] = {
 
 static struct ion_platform_data ion_pdata = {
         .nr = MSM_ION_HEAP_NUM,
+	.has_outer_cache = 1,
         .heaps = pico_heaps,
 };
 

@@ -315,6 +315,16 @@ config MACH_PICO
 		help
 			Support for Pico (PDA phone).
 
+config PICO_NAND_RESIZE_PART
+		depends on MACH_PICO
+		bool "Repartition NAND Devices on Pico"
+		default n
+		help
+			dynamically resize the system partiton by obtaining
+			32 mB from userdata partition, and 48 mB from the
+			cache partition, and hax the partition table as soon
+			as the information is got from ATAG.
+
 config MACH_GOLFU
 		depends on ARCH_MSM7X27A
 		depends on !MSM_STACKED_MEMORY

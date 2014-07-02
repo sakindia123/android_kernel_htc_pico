@@ -2391,7 +2391,7 @@ if ARCH_MSM7X30
 endif
 
 if ARCH_MSM7X27A
-	source "drivers/video/msm_7x27A/Kconfig"
+	source "drivers/video/msm/Kconfig"
 endif
 
 config FB_MSM_OVERLAY_LEGACY

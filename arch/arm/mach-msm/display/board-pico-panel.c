@@ -68,7 +68,7 @@ struct mdp_reg pico_color_enhancement[] = {
 
 int pico_mdp_color_enhancement(void)
 {
-	mdp_color_enhancement(pico_color_enhancement, ARRAY_SIZE(pico_color_enhancement));
+//	mdp_color_enhancement(pico_color_enhancement, ARRAY_SIZE(pico_color_enhancement));
 	
 	return 0;
 }
@@ -126,9 +126,8 @@ static int msm_fb_get_lane_config(void)
 
 static struct mipi_dsi_platform_data mipi_dsi_pdata = {
 	.vsync_gpio		= 97,
-	.dsi_power_save		= mipi_panel_power,
+	.dsi_power_save	= mipi_panel_power,
 	.get_lane_config	= msm_fb_get_lane_config,
-	.dlane_swap 		= 0x01,
 };
 
 #define BRI_SETTING_MIN                 30
@@ -168,7 +167,7 @@ static unsigned char pico_shrink_pwm(int val)
 }
 
 static struct msm_panel_common_pdata mipi_pico_panel_data = {
-	.shrink_pwm = NULL,
+
 };
 
 static struct platform_device mipi_dsi_cmd_hvga_panel_device = {
@@ -219,7 +218,6 @@ static struct msm_panel_common_pdata mdp_pdata = {
 	.cont_splash_enabled = 0x00,
 	.gpio = 97,
 	.mdp_rev = MDP_REV_303,
-	.mdp_color_enhance = pico_mdp_color_enhancement,
 };
 
 static void __init msm_fb_add_devices(void)
@@ -249,8 +247,6 @@ int __init pico_init_panel(void)
 
 	PR_DISP_INFO("panel_type= 0x%x\n", panel_type);
 	PR_DISP_INFO("%s: %s\n", __func__, mipi_dsi_cmd_hvga_panel_device.name);
-
-	mipi_pico_panel_data.shrink_pwm = pico_shrink_pwm;
 
 
 	ret = platform_device_register(&msm_fb_device);

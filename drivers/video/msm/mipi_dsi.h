@@ -295,7 +295,8 @@ void mipi_dsi_bist_ctrl(void);
 int mipi_dsi_buf_alloc(struct dsi_buf *, int size);
 int mipi_dsi_cmd_dma_add(struct dsi_buf *dp, struct dsi_cmd_desc *cm);
 int mipi_dsi_cmds_tx(struct dsi_buf *dp, struct dsi_cmd_desc *cmds, int cnt);
-
+int mipi_dsi_cmds_tx2(struct msm_fb_data_type *mfd,
+		struct dsi_buf *dp, struct dsi_cmd_desc *cmds, int cnt);
 int mipi_dsi_cmd_dma_tx(struct dsi_buf *dp);
 int mipi_dsi_cmd_reg_tx(uint32 data);
 int mipi_dsi_cmds_rx(struct msm_fb_data_type *mfd,

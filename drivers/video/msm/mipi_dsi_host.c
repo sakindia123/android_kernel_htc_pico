@@ -1192,6 +1192,62 @@ int mipi_dsi_cmds_tx(struct dsi_buf *tp, struct dsi_cmd_desc *cmds, int cnt)
 	return cnt;
 }
 
+int mipi_dsi_cmds_tx2(struct msm_fb_data_type *mfd,
+		struct dsi_buf *tp, struct dsi_cmd_desc *cmds, int cnt)
+{
+	struct dsi_cmd_desc *cm;
+	uint32 dsi_ctrl, ctrl;
+	int i, video_mode;
+	unsigned long flag;
+
+	/* turn on cmd mode
+	* for video mode, do not send cmds more than
+	* one pixel line, since it only transmit it
+	* during BLLP.
+	*/
+	dsi_ctrl = MIPI_INP(MIPI_DSI_BASE + 0x0000);
+	video_mode = dsi_ctrl & 0x02; /* VIDEO_MODE_EN */
+	if (video_mode) {
+		ctrl = dsi_ctrl | 0x04; /* CMD_MODE_EN */
+		MIPI_OUTP(MIPI_DSI_BASE + 0x0000, ctrl);
+	}
+	else {
+		if (mfd->panel_info.type == MIPI_CMD_PANEL) {
+		    #ifndef CONFIG_FB_MSM_MDP303
+			    mdp4_dsi_cmd_dma_busy_wait(mfd);
+		    #else
+			    mdp3_dsi_cmd_dma_busy_wait(mfd);
+		    #endif
+		}
+	  }
+
+	spin_lock_irqsave(&dsi_mdp_lock, flag);
+	dsi_mdp_busy = TRUE;
+	spin_unlock_irqrestore(&dsi_mdp_lock, flag);
+
+	cm = cmds;
+	mipi_dsi_buf_init(tp);
+	for (i = 0; i < cnt; i++) {
+		mipi_dsi_enable_irq(DSI_CMD_TERM);
+		mipi_dsi_buf_init(tp);
+		mipi_dsi_cmd_dma_add(tp, cm);
+		mipi_dsi_cmd_dma_tx(tp);
+		if (cm->wait)
+			msleep(cm->wait);
+		cm++;
+	}
+
+	if (video_mode)
+		MIPI_OUTP(MIPI_DSI_BASE + 0x0000, dsi_ctrl); /* restore */
+
+	spin_lock_irqsave(&dsi_mdp_lock, flag);
+	dsi_mdp_busy = FALSE;
+	complete(&dsi_mdp_comp);
+	spin_unlock_irqrestore(&dsi_mdp_lock, flag);
+
+	return cnt;
+}
+
 /* MIPI_DSI_MRPS, Maximum Return Packet Size */
 static char max_pktsize[2] = {0x00, 0x00}; /* LSB tx first, 10 bytes */
 

@@ -471,7 +471,7 @@ static int mipi_samsung_lcd_on(struct platform_device *pdev)
 		if (panel_type != PANEL_ID_NONE) {
 			PR_DISP_INFO("%s\n", ptype);
 
-			mipi_dsi_cmds_tx(&samsung_tx_buf, mipi_power_on_cmd,
+			mipi_dsi_cmds_tx2(mfd, &samsung_tx_buf, mipi_power_on_cmd,
 				mipi_power_on_cmd_size);
 
 		} else {
@@ -501,8 +501,8 @@ static int mipi_samsung_lcd_off(struct platform_device *pdev)
 	if (panel_type != PANEL_ID_NONE) {
 		PR_DISP_INFO("%s\n", ptype);
 
-			mipi_dsi_cmds_tx(&samsung_tx_buf, mipi_power_off_cmd,
-				mipi_power_on_cmd_size);
+			mipi_dsi_cmds_tx2(mfd, &samsung_tx_buf, mipi_power_off_cmd,
+				mipi_power_off_cmd_size);
 
 	} else
 		printk(KERN_ERR "panel_type=0x%x not support at power off\n",
@@ -530,7 +530,7 @@ static void mipi_samsung_set_backlight(struct msm_fb_data_type *mfd)
 	led_pwm1[1] = (unsigned char)(mfd->bl_level);
 
 
-			mipi_dsi_cmds_tx(&samsung_tx_buf, samsung_cmd_backlight_cmds,
+			mipi_dsi_cmds_tx2(mfd, &samsung_tx_buf, samsung_cmd_backlight_cmds,
 				ARRAY_SIZE(samsung_cmd_backlight_cmds));
 
 	PR_DISP_DEBUG("mipi_dsi_set_backlight > set brightness to %d\n", led_pwm1[1]);

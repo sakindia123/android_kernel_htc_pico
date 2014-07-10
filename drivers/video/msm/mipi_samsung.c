@@ -444,6 +444,18 @@ void mipi_samsung_panel_type_detect(struct mipi_panel_info *mipi)
 	return;
 }
 
+static void mipi_samsung_bkl_ctrl(struct msm_fb_data_type *mfd, bool on)
+{
+	PR_DISP_INFO("mipi_samsung_bkl_ctrl > on = %x\n", on);
+	if (on) {
+		mipi_dsi_cmds_tx2(mfd, &samsung_tx_buf, samsung_bkl_enable_cmds,
+			ARRAY_SIZE(samsung_bkl_enable_cmds));
+	} else {
+		mipi_dsi_cmds_tx2(mfd, &samsung_tx_buf, samsung_bkl_disable_cmds,
+			ARRAY_SIZE(samsung_bkl_disable_cmds));
+	}
+}
+
 static int mipi_samsung_lcd_on(struct platform_device *pdev)
 {
 	struct msm_fb_data_type *mfd;
@@ -473,6 +485,9 @@ static int mipi_samsung_lcd_on(struct platform_device *pdev)
 
 			mipi_dsi_cmds_tx2(mfd, &samsung_tx_buf, mipi_power_on_cmd,
 				mipi_power_on_cmd_size);
+
+			hr_msleep(40);
+			mipi_samsung_bkl_ctrl(mfd, true);
 
 		} else {
 			printk(KERN_ERR "panel_type=0x%x not support at power on\n", panel_type);

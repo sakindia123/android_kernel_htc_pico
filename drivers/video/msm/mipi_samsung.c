@@ -396,7 +396,7 @@ static uint32 mipi_samsung_manufacture_id(struct msm_fb_data_type *mfd)
 */
 
 static struct dsi_cmd_desc samsung_cmd_backlight_cmds[] = {
-	{DTYPE_DCS_WRITE1, 1, 0, 0, 0,
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
 		sizeof(led_pwm1), led_pwm1},
 };
 
@@ -465,7 +465,7 @@ static int mipi_samsung_lcd_on(struct platform_device *pdev)
 		if (panel_type != PANEL_ID_NONE) {
 			PR_DISP_INFO("%s\n", ptype);
 
-			mipi_dsi_cmds_tx2(mfd, &samsung_tx_buf, mipi_power_on_cmd,
+			mipi_dsi_cmds_tx(&samsung_tx_buf, mipi_power_on_cmd,
 				mipi_power_on_cmd_size);
 
 		} else {
@@ -495,7 +495,7 @@ static int mipi_samsung_lcd_off(struct platform_device *pdev)
 	if (panel_type != PANEL_ID_NONE) {
 		PR_DISP_INFO("%s\n", ptype);
 
-			mipi_dsi_cmds_tx2(mfd, &samsung_tx_buf, mipi_power_off_cmd,
+			mipi_dsi_cmds_tx(&samsung_tx_buf, mipi_power_off_cmd,
 				mipi_power_off_cmd_size);
 
 	} else
@@ -524,7 +524,7 @@ static void mipi_samsung_set_backlight(struct msm_fb_data_type *mfd)
 	led_pwm1[1] = (unsigned char)(mfd->bl_level);
 
 
-			mipi_dsi_cmds_tx2(mfd, &samsung_tx_buf, samsung_cmd_backlight_cmds,
+			mipi_dsi_cmds_tx(&samsung_tx_buf, samsung_cmd_backlight_cmds,
 				ARRAY_SIZE(samsung_cmd_backlight_cmds));
 
 	PR_DISP_DEBUG("mipi_dsi_set_backlight > set brightness to %d\n", led_pwm1[1]);

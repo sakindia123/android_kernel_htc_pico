@@ -22,25 +22,40 @@ int pico_init_mmc(unsigned int sys_rev);
 int __init pico_init_panel(void);
 int __init pico_wifi_init(void);
 
-#define MSM_MEM_BASE		0x10000000
-#define MSM_MEM_SIZE		0x20000000
+#define MSM_MEM_BASE		0x10000000 // 256 mB
+#define MSM_MEM_SIZE		0x20000000 // 512 mB
 
-#define MSM_LINUX_BASE_OFFSET	0x02C00000
+#define MSM_LINUX_BASE_OFFSET	0x02C00000 // 44 mB
 
-#define MSM_FB_BASE             0x2FE00000
-#define MSM_FB_SIZE             0x00200000
+#define MSM_FB_BASE             0x2FE00000 // 803209216 || 766
+#define MSM_FB_SIZE             0x00200000 // 2 mB
 
 #define MSM_LINUX_BASE          (MSM_MEM_BASE + MSM_LINUX_BASE_OFFSET) /* 2MB alignment */
+                                     /*256 mB*/       /*44 mB*/
 #define MSM_LINUX_SIZE          (MSM_MEM_SIZE - MSM_LINUX_BASE_OFFSET - MSM_FB_SIZE - 0x100000)/*1MB for ram console*/
+                                  /* 512mB    -         44 mB         -    2 mB     -   1 mB    */
 
 /* Must be same as MSM_HTC_RAM_CONSOLE_PHYS */
-#define MSM_RAM_CONSOLE_BASE    0x2FD00000
-#define MSM_RAM_CONSOLE_SIZE    MSM_HTC_RAM_CONSOLE_SIZE
+/* MSM_HTC_RAM_CONSOLE_PHYS defined in msm_iomap-7xxx.h */
+#define MSM_RAM_CONSOLE_BASE    0x2FD00000 // 802160640 || 765
+#define MSM_RAM_CONSOLE_SIZE    MSM_HTC_RAM_CONSOLE_SIZE // (SZ_1M - SZ_128K)
 
-#define MSM_PMEM_MDP_SIZE       0x1500000 /* 0x01400000 => 0x2F00000 => 0x1500000 */
-#define MSM_PMEM_ADSP_SIZE      0x1200000 /* 0x00D00000 => 0x3300000 => 0x1200000 */
-#define PMEM_KERNEL_EBI1_SIZE	0x3A000
-#define MSM_PMEM_AUDIO_SIZE	0x1F4000 /* 0x5B000 => 0x1F4000 */
+#ifdef CONFIG_PICO_RESIZE_MEM_ALLOC
+/* experimental values! to revert if stability issues faced!
+ * try to snatch as much memory as possible, keeping the system stable.
+ */
+#define MSM_PMEM_MDP_SIZE       0x1000000 /* 0x1400000 => 0x2F00000 => 0x1500000 => 0x1000000 (thewisenerd) (16 mB) */
+#define MSM_PMEM_ADSP_SIZE      0x0A00000 /* 0x00D0000 => 0x3300000 => 0x1200000 => 0x0A00000 (thewisenerd) (10 mB) */
+#define MSM_PMEM_AUDIO_SIZE     0x0100000 /* 0x005B000 => 0x01F4000 => 0x0100000 (thewisenerd) (1 mB) */
+#else
+/* pretty stable values! safe to revert back to these! */
+#define MSM_PMEM_MDP_SIZE       0x1400000 /* 0x1400000 => 0x2F00000 => 0x1500000 => 0x1400000 (thewisenerd) (20 mB) */
+#define MSM_PMEM_ADSP_SIZE      0x1000000 /* 0x00D0000 => 0x3300000 => 0x1200000 => 0x1000000 (thewisenerd) (16 mB) */
+#define MSM_PMEM_AUDIO_SIZE     0x0200000 /* 0x005B000 => 0x01F4000 => 0x0200000 (thewisenerd) (2 mB) */
+#endif
+
+#define PMEM_KERNEL_EBI1_SIZE	0x3A000 /* 237568 B || 232 kB */
+
 
 #define PICO_GPIO_TO_INT(x)           (x+64) /* from gpio_to_irq */
 

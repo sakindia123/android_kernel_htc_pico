@@ -325,6 +325,14 @@ config PICO_NAND_RESIZE_PART
 			cache partition, and hax the partition table as soon
 			as the information is got from ATAG.
 
+config PICO_RESIZE_MEM_ALLOC
+		depends on MACH_PICO
+		bool "Resize memory allocations on Pico"
+		default n
+		help
+			resize the current memory allocation heaps to gain
+			*some* more free RAM for userspace
+
 config MACH_GOLFU
 		depends on ARCH_MSM7X27A
 		depends on !MSM_STACKED_MEMORY

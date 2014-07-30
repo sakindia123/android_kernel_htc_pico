@@ -3,7 +3,7 @@
  * Verification code for aDSP JPEG packets from userspace.
  *
  * Copyright (C) 2008 Google, Inc.
- * Copyright (c) 2008-2009, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2008-2009, The Linux Foundation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -55,20 +55,9 @@ static inline int verify_jpeg_cmd_enc_cfg(struct msm_adsp_module *module,
 	num_frags = (cmd->process_cfg >> 10) & 0xf;
 	num_frags = ((num_frags == 1) ? num_frags : num_frags * 2);
 	for (i = 0; i < num_frags; i += 2) {
-	    // HTC_START
-	    // Buffer Overflow - Array Index Out of Bounds
-	    if (i+1 < (sizeof(cmd->frag_cfg_part)/sizeof(cmd->frag_cfg_part[0])))
-	    {
-			if (adsp_pmem_fixup(module, (void **)(&cmd->frag_cfg_part[i]), luma_size) ||
-		        adsp_pmem_fixup(module, (void **)(&cmd->frag_cfg_part[i+1]), chroma_size))
-			    return -1;
-		}
-	    else
-		{
-			MM_ERR("module %s: index out of size %d\n", module->name, i);
-		}
-		// HTC_END
-
+		if (adsp_pmem_fixup(module, (void **)(&cmd->frag_cfg_part[i]), luma_size) ||
+		    adsp_pmem_fixup(module, (void **)(&cmd->frag_cfg_part[i+1]), chroma_size))
+			return -1;
 	}
 
 	if (adsp_pmem_fixup(module, (void **)&cmd->op_buf_0_cfg_part1,

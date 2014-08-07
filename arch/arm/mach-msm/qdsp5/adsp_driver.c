@@ -28,6 +28,20 @@
 #include <linux/android_pmem.h>
 #include <mach/debug_mm.h>
 
+struct adsp_pmem_info {
+	int fd;
+	void *vaddr;
+};
+
+struct adsp_pmem_region {
+	struct hlist_node list;
+	void *vaddr;
+	unsigned long paddr;
+	unsigned long kvaddr;
+	unsigned long len;
+	struct file *file;
+};
+
 struct adsp_ion_info {
 	int fd;
 	void *vaddr;
@@ -61,6 +75,8 @@ struct adsp_device {
 
 static struct adsp_device *inode_to_device(struct inode *inode);
 
+bool requires_pmem(struct msm_adsp_module *module);
+
 #define __CONTAINS(r, v, l) ({					\
 	typeof(r) __r = r;					\
 	typeof(v) __v = v;					\
@@ -91,6 +107,141 @@ static struct adsp_device *inode_to_device(struct inode *inode);
 	int res = (IN_RANGE(__r1, __v) || IN_RANGE(__r1, __e));	\
 	res;							\
 })
+
+static int adsp_pmem_check(struct msm_adsp_module *module,
+		void *vaddr, unsigned long len)
+{
+	struct adsp_pmem_region *region_elt;
+	struct hlist_node *node;
+	struct adsp_pmem_region t = { .vaddr = vaddr, .len = len };
+
+	hlist_for_each_entry(region_elt, node, &module->pmem_regions, list) {
+		if (CONTAINS(region_elt, &t) || CONTAINS(&t, region_elt) ||
+		    OVERLAPS(region_elt, &t)) {
+			MM_ERR("module %s:"
+				" region (vaddr %p len %ld)"
+				" clashes with registered region"
+				" (vaddr %p paddr %p len %ld)\n",
+				module->name,
+				vaddr, len,
+				region_elt->vaddr,
+				(void *)region_elt->paddr,
+				region_elt->len);
+			return -EINVAL;
+		}
+	}
+
+	return 0;
+}
+
+static int adsp_pmem_add(struct msm_adsp_module *module,
+			 struct adsp_pmem_info *info)
+{
+	unsigned long paddr, kvaddr, len;
+	struct file *file;
+	struct adsp_pmem_region *region;
+	int rc = -EINVAL;
+
+	mutex_lock(&module->pmem_regions_lock);
+	region = kmalloc(sizeof(*region), GFP_KERNEL);
+	if (!region) {
+		rc = -ENOMEM;
+		goto end;
+	}
+	INIT_HLIST_NODE(&region->list);
+	if (get_pmem_file(info->fd, &paddr, &kvaddr, &len, &file)) {
+		kfree(region);
+		goto end;
+	}
+
+	rc = adsp_pmem_check(module, info->vaddr, len);
+	if (rc < 0) {
+		put_pmem_file(file);
+		kfree(region);
+		goto end;
+	}
+
+	region->vaddr = info->vaddr;
+	region->paddr = paddr;
+	region->kvaddr = kvaddr;
+	region->len = len;
+	region->file = file;
+
+	hlist_add_head(&region->list, &module->pmem_regions);
+end:
+	mutex_unlock(&module->pmem_regions_lock);
+	return rc;
+}
+
+static int adsp_pmem_lookup_vaddr(struct msm_adsp_module *module, void **addr,
+		     unsigned long len, struct adsp_pmem_region **region)
+{
+	struct hlist_node *node;
+	void *vaddr = *addr;
+	struct adsp_pmem_region *region_elt;
+
+	int match_count = 0;
+
+	*region = NULL;
+
+	/* returns physical address or zero */
+	hlist_for_each_entry(region_elt, node, &module->pmem_regions, list) {
+		if (vaddr >= region_elt->vaddr &&
+		    vaddr < region_elt->vaddr + region_elt->len &&
+		    vaddr + len <= region_elt->vaddr + region_elt->len) {
+			/* offset since we could pass vaddr inside a registerd
+			 * pmem buffer
+			 */
+
+			match_count++;
+			if (!*region)
+				*region = region_elt;
+		}
+	}
+
+	if (match_count > 1) {
+		MM_ERR("module %s: "
+			"multiple hits for vaddr %p, len %ld\n",
+			module->name, vaddr, len);
+		hlist_for_each_entry(region_elt, node,
+				&module->pmem_regions, list) {
+			if (vaddr >= region_elt->vaddr &&
+			    vaddr < region_elt->vaddr + region_elt->len &&
+			    vaddr + len <= region_elt->vaddr + region_elt->len)
+				MM_ERR("%p, %ld --> %p\n",
+					region_elt->vaddr,
+					region_elt->len,
+					(void *)region_elt->paddr);
+		}
+	}
+
+	return *region ? 0 : -1;
+}
+
+int adsp_pmem_fixup_kvaddr(struct msm_adsp_module *module, void **addr,
+			   unsigned long *kvaddr, unsigned long len,
+			   struct file **filp, unsigned long *offset)
+{
+	struct adsp_pmem_region *region;
+	void *vaddr = *addr;
+	unsigned long *paddr = (unsigned long *)addr;
+	int ret;
+
+	ret = adsp_pmem_lookup_vaddr(module, addr, len, &region);
+	if (ret) {
+		MM_ERR("not patching %s (paddr & kvaddr),"
+			" lookup (%p, %ld) failed\n",
+			module->name, vaddr, len);
+		return ret;
+	}
+	*paddr = region->paddr + (vaddr - region->vaddr);
+	*kvaddr = region->kvaddr + (vaddr - region->vaddr);
+	if (filp)
+		*filp = region->file;
+	if (offset)
+		*offset = vaddr - region->vaddr;
+	return 0;
+}
 
 static int adsp_ion_check(struct msm_adsp_module *module,
 		void *vaddr, unsigned long len)
@@ -302,19 +453,29 @@ int adsp_ion_fixup_kvaddr(struct msm_adsp_module *module, void **addr,
 int adsp_pmem_fixup(struct msm_adsp_module *module, void **addr,
 		    unsigned long len)
 {
-	struct adsp_ion_region *region;
+	struct adsp_pmem_region *pmem_region;
+	struct adsp_ion_region *ion_region;
 	void *vaddr = *addr;
 	unsigned long *paddr = (unsigned long *)addr;
 	int ret;
+	bool use_pmem = requires_pmem(module);
 
-	ret = adsp_ion_lookup_vaddr(module, addr, len, &region);
+	if(use_pmem)
+		ret = adsp_pmem_lookup_vaddr(module, addr, len, &pmem_region);
+	else
+		ret = adsp_ion_lookup_vaddr(module, addr, len, &ion_region);
+
 	if (ret) {
 		MM_ERR("not patching %s, lookup (%p, %ld) failed\n",
 			module->name, vaddr, len);
 		return ret;
 	}
 
-	*paddr = region->paddr + (vaddr - region->vaddr);
+	if(use_pmem)
+		*paddr = pmem_region->paddr + (vaddr - pmem_region->vaddr);
+	else
+		*paddr = ion_region->paddr + (vaddr - ion_region->vaddr);
+
 	return 0;
 }
 
@@ -338,6 +499,7 @@ static long adsp_write_cmd(struct adsp_device *adev, void __user *arg)
 	unsigned char buf[256];
 	void *cmd_data;
 	long rc;
+	bool use_pmem = requires_pmem(adev->module);
 
 	if (copy_from_user(&cmd, (void __user *)arg, sizeof(cmd)))
 		return -EFAULT;
@@ -355,7 +517,11 @@ static long adsp_write_cmd(struct adsp_device *adev, void __user *arg)
 		goto end;
 	}
 
-	mutex_lock(&adev->module->ion_regions_lock);
+	if(use_pmem)
+		mutex_lock(&adev->module->pmem_regions_lock);
+	else
+		mutex_lock(&adev->module->ion_regions_lock);
+
 	if (adsp_verify_cmd(adev->module, cmd.queue, cmd_data, cmd.len)) {
 		MM_ERR("module %s: verify failed.\n", adev->module->name);
 		rc = -EINVAL;
@@ -365,7 +531,10 @@ static long adsp_write_cmd(struct adsp_device *adev, void __user *arg)
 	wmb();
 	rc = msm_adsp_write(adev->module, cmd.queue, cmd_data, cmd.len);
 end:
-	mutex_unlock(&adev->module->ion_regions_lock);
+	if(use_pmem)
+		mutex_unlock(&adev->module->pmem_regions_lock);
+	else
+		mutex_unlock(&adev->module->ion_regions_lock);
 
 	if (cmd.len > 256)
 		kfree(cmd_data);
@@ -381,6 +550,23 @@ static int adsp_events_pending(struct adsp_device *adev)
 	yes = !list_empty(&adev->event_queue);
 	spin_unlock_irqrestore(&adev->event_queue_lock, flags);
 	return yes || adev->abort;
+}
+
+static int adsp_pmem_lookup_paddr(struct msm_adsp_module *module, void **addr,
+		     struct adsp_pmem_region **region)
+{
+	struct hlist_node *node;
+	unsigned long paddr = (unsigned long)(*addr);
+	struct adsp_pmem_region *region_elt;
+
+	hlist_for_each_entry(region_elt, node, &module->pmem_regions, list) {
+		if (paddr >= region_elt->paddr &&
+		    paddr < region_elt->paddr + region_elt->len) {
+			*region = region_elt;
+			return 0;
+		}
+	}
+	return -1;
 }
 
 static int adsp_ion_lookup_paddr(struct msm_adsp_module *module, void **addr,
@@ -402,19 +588,27 @@ static int adsp_ion_lookup_paddr(struct msm_adsp_module *module, void **addr,
 
 int adsp_pmem_paddr_fixup(struct msm_adsp_module *module, void **addr)
 {
-	struct adsp_ion_region *region;
+	struct adsp_pmem_region *pmem_region;
+	struct adsp_ion_region *ion_region;
 	unsigned long paddr = (unsigned long)(*addr);
 	unsigned long *vaddr = (unsigned long *)addr;
 	int ret;
+	bool use_pmem = requires_pmem(module);
 
-	ret = adsp_ion_lookup_paddr(module, addr, &region);
+	if(use_pmem)
+		ret = adsp_pmem_lookup_paddr(module, addr, &pmem_region);
+	else
+		ret = adsp_ion_lookup_paddr(module, addr, &ion_region);
 	if (ret) {
 		MM_ERR("not patching %s, paddr %p lookup failed\n",
 			module->name, vaddr);
 		return ret;
 	}
 
-	*vaddr = (unsigned long)region->vaddr + (paddr - region->paddr);
+	if(use_pmem)
+		*vaddr = (unsigned long)pmem_region->vaddr + (paddr - pmem_region->paddr);
+	else
+		*vaddr = (unsigned long)ion_region->vaddr + (paddr - ion_region->paddr);
 	return 0;
 }
 
@@ -503,6 +697,24 @@ end:
 	return rc;
 }
 
+static int adsp_pmem_del(struct msm_adsp_module *module)
+{
+	struct hlist_node *node, *tmp;
+	struct adsp_pmem_region *region;
+
+	mutex_lock(&module->pmem_regions_lock);
+	hlist_for_each_safe(node, tmp, &module->pmem_regions) {
+		region = hlist_entry(node, struct adsp_pmem_region, list);
+		hlist_del(node);
+		put_pmem_file(region->file);
+		kfree(region);
+	}
+	mutex_unlock(&module->pmem_regions_lock);
+	BUG_ON(!hlist_empty(&module->pmem_regions));
+
+	return 0;
+}
+
 static int adsp_ion_del(struct msm_adsp_module *module)
 {
 	struct hlist_node *node, *tmp;
@@ -527,6 +739,7 @@ static int adsp_ion_del(struct msm_adsp_module *module)
 static long adsp_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	struct adsp_device *adev = filp->private_data;
+	bool use_pmem = requires_pmem(adev->module);
 
 	switch (cmd) {
 	case ADSP_IOCTL_ENABLE:
@@ -556,10 +769,21 @@ static long adsp_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	}
 
 	case ADSP_IOCTL_REGISTER_PMEM: {
-		struct adsp_ion_info info;
-		if (copy_from_user(&info, (void *) arg, sizeof(info)))
-			return -EFAULT;
-		return adsp_ion_add(adev->module, &info);
+		struct adsp_pmem_info pmem_info;
+		struct adsp_ion_info ion_info;
+
+		if(use_pmem)
+		{
+			if (copy_from_user(&pmem_info, (void *) arg, sizeof(pmem_info)))
+				return -EFAULT;
+			return adsp_pmem_add(adev->module, &pmem_info);
+		}
+		else
+		{
+			if (copy_from_user(&ion_info, (void *) arg, sizeof(ion_info)))
+				return -EFAULT;
+			return adsp_ion_add(adev->module, &ion_info);
+		}
 	}
 
 	case ADSP_IOCTL_ABORT_EVENT_READ:
@@ -568,7 +792,10 @@ static long adsp_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		break;
 
 	case ADSP_IOCTL_UNREGISTER_PMEM:
-		return adsp_ion_del(adev->module);
+		if(use_pmem)
+			return adsp_pmem_del(adev->module);
+		else
+			return adsp_ion_del(adev->module);
 
 	default:
 		break;
@@ -581,13 +808,17 @@ static int adsp_release(struct inode *inode, struct file *filp)
 	struct adsp_device *adev = filp->private_data;
 	struct msm_adsp_module *module = adev->module;
 	int rc = 0;
+	bool use_pmem = requires_pmem(module);
 
 	MM_INFO("release '%s'\n", adev->name);
 
 	/* clear module before putting it to avoid race with open() */
 	adev->module = NULL;
 
-	rc = adsp_ion_del(module);
+	if(use_pmem)
+		rc = adsp_pmem_del(module);
+	else
+		rc = adsp_ion_del(module);
 
 	msm_adsp_put(module);
 	return rc;
@@ -658,6 +889,8 @@ static int adsp_open(struct inode *inode, struct file *filp)
 	MM_INFO("opened module '%s' adev %p\n", adev->name, adev);
 	filp->private_data = adev;
 	adev->abort = 0;
+	INIT_HLIST_HEAD(&adev->module->pmem_regions);
+	mutex_init(&adev->module->pmem_regions_lock);
 	INIT_HLIST_HEAD(&adev->module->ion_regions);
 	mutex_init(&adev->module->ion_regions_lock);
 
@@ -742,4 +975,13 @@ fail_alloc_region:
 	class_unregister(adsp_class);
 fail_create_class:
 	kfree(adsp_devices);
+}
+
+bool requires_pmem(struct msm_adsp_module *module)
+{
+	return (strcmp(module->name, "JPEGTASK") == 0 ||
+		strcmp(module->name, "QCAMTASK") == 0 ||
+		strcmp(module->name, "VFETASK") == 0 ||
+		strcmp(module->name, "VIDEOTASK") == 0 ||
+		strcmp(module->name, "VIDEOENCTASK") == 0 );
 }

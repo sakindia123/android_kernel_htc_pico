@@ -26,6 +26,9 @@
 
 int adsp_pmem_fixup(struct msm_adsp_module *module, void **addr,
 		    unsigned long len);
+int adsp_pmem_fixup_kvaddr(struct msm_adsp_module *module, void **addr,
+			unsigned long *kvaddr, unsigned long len,
+			struct file **filp, unsigned long *offset);
 int adsp_ion_do_cache_op(struct msm_adsp_module *module, void *addr,
 			void *paddr, unsigned long len,
 			unsigned long offset, int cmd);
@@ -280,6 +283,9 @@ struct msm_adsp_module {
 	struct platform_device pdev;
 	struct clk *clk;
 	int open_count;
+
+	struct mutex pmem_regions_lock;
+	struct hlist_head pmem_regions;
 
 	struct mutex ion_regions_lock;
 	struct hlist_head ion_regions;

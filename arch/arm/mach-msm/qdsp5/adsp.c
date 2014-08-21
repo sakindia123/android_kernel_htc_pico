@@ -283,6 +283,8 @@ int msm_adsp_get(const char *name, struct msm_adsp_module **out,
 	int rc = 0;
 	static uint32_t init_info_cmd_sent;
 
+	mutex_lock(&adsp_info.lock);
+	MM_INFO("acquired adsp info lock\n");
 	if (!init_info_cmd_sent) {
 		init_waitqueue_head(&adsp_info.init_info_wait);
 		msm_get_init_info();
@@ -291,11 +293,13 @@ int msm_adsp_get(const char *name, struct msm_adsp_module **out,
 			5 * HZ);
 		if (!rc) {
 			MM_ERR("INIT_INFO failed\n");
+			mutex_unlock(&adsp_info.lock);
 			return -ETIMEDOUT;
 
 		}
 		init_info_cmd_sent++;
 	}
+	mutex_unlock(&adsp_info.lock);
 
 	module = find_adsp_module_by_name(&adsp_info, name);
 	if (!module)
@@ -762,11 +766,13 @@ static void handle_adsp_rtos_mtoa_app(struct rpc_request_hdr *req)
 	rpc_send_accepted_void_reply(rpc_cb_server_client, req->xid,
 				     RPC_ACCEPTSTAT_SUCCESS);
 #ifdef CONFIG_MSM_ADSP_REPORT_EVENTS
-	event_addr = (uint32_t *)req;
-	module->ops->event(module->driver_data,
-				EVENT_MSG_ID,
-				EVENT_LEN,
-				read_event);
+	if (module->ops) {
+		event_addr = (uint32_t *)req;
+		module->ops->event(module->driver_data,
+				        EVENT_MSG_ID,
+				        EVENT_LEN,
+				        read_event);
+	}
 #endif
 	mutex_unlock(&module->lock);
 }

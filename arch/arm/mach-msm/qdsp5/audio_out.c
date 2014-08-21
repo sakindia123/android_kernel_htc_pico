@@ -111,7 +111,7 @@ module_init(_pcm_log_init);
 
 
 
-#define BUFSZ (5248)
+#define BUFSZ (960 * 5)
 #define DMASZ (BUFSZ * 2)
 
 #define COMMON_OBJ_ID 6
@@ -265,7 +265,7 @@ static int audio_enable(struct audio *audio)
 	}
 
 	audio->enabled = 1;
-	htc_pwrsink_set(PWRSINK_AUDIO, 100);
+	htc_pwrsink_audio_set(PWRSINK_AUDIO_PCM, 100);
 	return 0;
 }
 
@@ -284,6 +284,7 @@ static int audio_disable(struct audio *audio)
 		audmgr_disable(&audio->audmgr);
 		audio->out_needed = 0;
 		audio_allow_sleep(audio);
+		htc_pwrsink_audio_set(PWRSINK_AUDIO_PCM, 0);
 	}
 	return 0;
 }
@@ -633,8 +634,11 @@ static long audio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case AUDIO_SET_VOLUME:
 		spin_lock_irqsave(&audio->dsp_lock, flags);
 		audio->vol_pan.volume = arg;
-		if (audio->running)
+		if (audio->running) {
 			audpp_dsp_set_vol_pan(5, &audio->vol_pan);
+			htc_pwrsink_audio_volume_set(PWRSINK_AUDIO_PCM,
+					audio->vol_pan.volume);
+		}
 		spin_unlock_irqrestore(&audio->dsp_lock, flags);
 		return 0;
 
@@ -855,7 +859,6 @@ static int audio_release(struct inode *inode, struct file *file)
 	audio_flush(audio);
 	audio->opened = 0;
 	mutex_unlock(&audio->lock);
-	htc_pwrsink_set(PWRSINK_AUDIO, 0);
 	return 0;
 }
 
@@ -889,7 +892,7 @@ static int audio_open(struct inode *inode, struct file *file)
 		goto done;
 
 	audio->out_buffer_size = BUFSZ;
-	audio->out_sample_rate = 48000;
+	audio->out_sample_rate = 44100;
 	audio->out_channel_mode = AUDPP_CMD_PCM_INTF_STEREO_V;
 	audio->out_weight = 100;
 
@@ -977,6 +980,7 @@ static long audpp_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 	case AUDIO_SET_ADRC: {
 			struct audpp_cmd_cfg_object_params_adrc adrc;
+			memset(&adrc, 0, sizeof(adrc));
 			prev_state = audio_copp->mbadrc_enable;
 			audio_copp->mbadrc_enable = 0;
 			if (copy_from_user(&adrc.compression_th, (void *) arg,

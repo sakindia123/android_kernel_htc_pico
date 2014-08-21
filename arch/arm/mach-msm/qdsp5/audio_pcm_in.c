@@ -672,6 +672,7 @@ static long audpcm_in_ioctl(struct file *file,
 	}
 	case AUDIO_GET_CONFIG: {
 		struct msm_audio_config cfg;
+		memset(&cfg, 0, sizeof(cfg));
 		cfg.buffer_size = audio->buffer_size;
 		cfg.buffer_count = FRAME_NUM;
 		cfg.sample_rate = convert_samp_index(audio->samp_rate);

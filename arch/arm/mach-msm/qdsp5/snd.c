@@ -29,6 +29,7 @@
 #include <mach/board.h>
 #include <mach/msm_rpcrouter.h>
 #include <mach/debug_mm.h>
+#include <mach/htc_pwrsink.h>
 
 /*LGE_CHANBE_S : jaz.john@lge.com kernel3.0 porting based on kernel2.6.38*/
 #if defined (CONFIG_MACH_MSM8X25_U0)
@@ -447,6 +448,7 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		rc = msm_rpc_call(snd->ept,
 			SND_SET_DEVICE_PROC,
 			&dmsg, sizeof(dmsg), 5 * HZ);
+		htc_pwrsink_audio_path_set(dmsg.args.device);
 		break;
 
 	case SND_SET_VOLUME:

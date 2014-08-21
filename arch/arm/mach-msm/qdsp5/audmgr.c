@@ -431,6 +431,7 @@ int audmgr_enable(struct audmgr *am, struct audmgr_config *cfg)
 	am->state = STATE_ENABLING;
 
 	MM_INFO("session 0x%08x\n", (int) am);
+	memset((void*)&msg, 0x0, sizeof(msg));
 	msg.args.set_to_one = cpu_to_be32(1);
 	msg.args.tx_sample_rate = cpu_to_be32(cfg->tx_rate);
 	msg.args.rx_sample_rate = cpu_to_be32(cfg->rx_rate);

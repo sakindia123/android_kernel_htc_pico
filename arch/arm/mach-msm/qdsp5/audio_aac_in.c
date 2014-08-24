@@ -1075,7 +1075,7 @@ static void audrec_pcm_send_data(struct audio_aac_in *audio, unsigned needed)
 }
 
 
-static int audaac_in_fsync(struct file *file, loff_t a, loff_t b, int datasync)
+static int audaac_in_fsync(struct file *file, int datasync)
 
 {
 	struct audio_aac_in *audio = file->private_data;

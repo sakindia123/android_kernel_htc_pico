@@ -1066,8 +1066,7 @@ static long audamrwb_ioctl(struct file *file, unsigned int cmd,
 }
 
 /* Only useful in tunnel-mode */
-static int audamrwb_fsync(struct file *file, loff_t a, loff_t b,
-	int datasync)
+static int audamrwb_fsync(struct file *file, int datasync)
 {
 	struct audio *audio = file->private_data;
 	struct buffer *frame;

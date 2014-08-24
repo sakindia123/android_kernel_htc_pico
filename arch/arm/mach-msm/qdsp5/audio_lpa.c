@@ -1203,8 +1203,7 @@ done:
 	return rc;
 }
 
-int audlpa_fsync(struct file *file, loff_t a, loff_t b,
-	int datasync)
+int audlpa_fsync(struct file *file, int datasync)
 {
 	struct audio *audio = file->private_data;
 

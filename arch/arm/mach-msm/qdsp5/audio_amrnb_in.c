@@ -1032,7 +1032,7 @@ static void audrec_pcm_send_data(struct audio_amrnb_in *audio, unsigned needed)
 	spin_unlock_irqrestore(&audio->dsp_lock, flags);
 }
 
-static int audamrnb_in_fsync(struct file *file, loff_t a, loff_t b, int datasync)
+static int audamrnb_in_fsync(struct file *file, int datasync)
 
 {
 	struct audio_amrnb_in *audio = file->private_data;

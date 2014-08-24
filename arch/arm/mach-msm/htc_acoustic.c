@@ -25,6 +25,11 @@
 #include <linux/mutex.h>
 #include <linux/slab.h>
 
+#include <linux/switch.h>
+#if defined(CONFIG_CPLD) && (defined(CONFIG_MACH_DUMMY) || defined(CONFIG_MACH_DUMMY) || defined(CONFIG_MACH_DUMMY))
+#include <linux/i2c/cpld.h>
+#endif
+
 #include <mach/msm_smd.h>
 #include <mach/msm_rpcrouter.h>
 #include <mach/msm_iomap.h>
@@ -35,7 +40,7 @@
 #include <mach/htc_acoustic.h>
 
 #define ACOUSTIC_IOCTL_MAGIC 'p'
-#define ACOUSTIC_ARM11_DONE _IOW(ACOUSTIC_IOCTL_MAGIC, 22, unsigned int)
+#define ACOUSTIC_ARM11_DONE	_IOW(ACOUSTIC_IOCTL_MAGIC, 22, unsigned int)
 #define ACOUSTIC_ALLOC_SMEM _IOW(ACOUSTIC_IOCTL_MAGIC, 23, unsigned int)
 #define SET_VR_MODE	        _IOW(ACOUSTIC_IOCTL_MAGIC, 24, unsigned int)
 #define ACOUSTIC_SET_HAC _IOW(ACOUSTIC_IOCTL_MAGIC, 25, unsigned int)
@@ -46,14 +51,20 @@
 #define ACOUSTIC_SET_CDMA_MUTE _IOW(ACOUSTIC_IOCTL_MAGIC, 30, unsigned int)
 #define ACOUSTIC_SET_BEATS_CONFIG _IOW(ACOUSTIC_IOCTL_MAGIC, 31, unsigned int)
 #define ACOUSTIC_GET_TABLES 	_IOW(ACOUSTIC_IOCTL_MAGIC, 32, unsigned)
+#define ACOUSTIC_SET_HEADSET_TYPE _IOW(ACOUSTIC_IOCTL_MAGIC, 33, unsigned int)
 
-#define HTCRPOG	0x30100002
-#define HTCVERS 0
-#if defined(CONFIG_ARCH_MSM7X27A)
-#define HTC_ACOUSTIC_TABLE_SIZE        (0x20000)
-#else
-#define HTC_ACOUSTIC_TABLE_SIZE        (0x10000)
+#define ACOUSTIC_UPDATE_BEATS_STATUS	_IOW(ACOUSTIC_IOCTL_MAGIC, 47, unsigned)
+#define ACOUSTIC_UPDATE_LISTEN_NOTIFICATION	_IOW(ACOUSTIC_IOCTL_MAGIC, 48, unsigned)
+
+#if defined(CONFIG_CPLD) && (defined(CONFIG_MACH_DUMMY) || defined(CONFIG_MACH_DUMMY) || defined(CONFIG_MACH_DUMMY))
+#define ACOUSTIC_SW_SPKL_RECVR	_IOW(ACOUSTIC_IOCTL_MAGIC, 50, unsigned)
+#define ACOUSTIC_ENABLE_MIC		_IOW(ACOUSTIC_IOCTL_MAGIC, 51, unsigned)
+#define ACOUSTIC_SW_MIC		_IOW(ACOUSTIC_IOCTL_MAGIC, 52, unsigned)
 #endif
+
+#define HTCRPOG 0x30100002
+#define HTCVERS 0
+#define HTC_ACOUSTIC_TABLE_SIZE        (0x20000)
 #define ONCRPC_SET_MIC_BIAS_PROC       (1)
 #define ONCRPC_ACOUSTIC_INIT_PROC      (5)
 #define ONCRPC_ALLOC_ACOUSTIC_MEM_PROC (6)
@@ -64,6 +75,7 @@
 #define ONCRPC_ENABLE_SH_PROC          (12)
 #define ONCRPC_MUTE_CDMA_PROC          (13)
 #define ONCRPC_SET_BEATS_CONFIG_PROC   (14)
+#define ONCRPC_SET_HEADSET_TYPE_PROC   (15)
 
 struct set_smem_req {
 	struct rpc_request_hdr hdr;
@@ -105,6 +117,9 @@ static int swap_f_table(int);
 static int first_time = 1;
 static struct acoustic_ops default_acoustic_ops;
 static struct acoustic_ops * the_ops = &default_acoustic_ops;
+
+static struct switch_dev sdev_beats;
+static struct switch_dev sdev_listen_notification;
 
 void acoustic_register_ops(struct acoustic_ops *ops)
 {
@@ -154,9 +169,9 @@ int enable_mic_bias(int on)
 
 int enable_mos_test(int enable)
 {
-	/* Do nothing */
+	
 	return 0;
-}
+	}
 EXPORT_SYMBOL(enable_mos_test);
 
 static int swap_f_table(int enable)
@@ -166,7 +181,7 @@ static int swap_f_table(int enable)
 		if (first_time) {
 			memcpy(f_table, (void *)(f_smem), table_size);
 			first_time = 0;
-		}
+	}
 
 #if defined(CONFIG_ARCH_MSM7X27A)
 		for (i = 0; i < 6; i++) {
@@ -231,8 +246,8 @@ static int acoustic_open(struct inode *inode, struct file *file)
 		}
 
 		htc_acoustic_vir_addr =
-				(uint32_t)smem_alloc(SMEM_ID_VENDOR1,
-						HTC_ACOUSTIC_TABLE_SIZE);
+			(uint32_t)smem_alloc(SMEM_ID_VENDOR1,
+					HTC_ACOUSTIC_TABLE_SIZE);
 		htc_acoustic_phy_addr = MSM_SHARED_RAM_PHYS +
 					(htc_acoustic_vir_addr -
 						(uint32_t)MSM_SHARED_RAM_BASE);
@@ -270,7 +285,10 @@ static long acoustic_ioctl(struct file *file, unsigned int cmd,
 	int rc = -1, reply_value;
 	int vr_arg, hac_arg, mute_arg, beats_arg, sh_arg;
 	int cdma_mute_arg, beats_cfg_arg;
-	uint32_t level;
+	uint32_t level, headset_type;
+#if defined(CONFIG_CPLD) && (defined(CONFIG_MACH_DUMMY) || defined(CONFIG_MACH_DUMMY) || defined(CONFIG_MACH_DUMMY))
+	int dev_sw, mic_en;
+#endif
 
 	struct vr_mode_req {
 		struct rpc_request_hdr hdr;
@@ -296,6 +314,11 @@ static long acoustic_ioctl(struct file *file, unsigned int cmd,
 		struct rpc_request_hdr hdr;
 		int cfg;
 	} beats_cfg_req;
+
+	struct type_req {
+		struct rpc_request_hdr hdr;
+		uint32_t type;
+	} headset_type_req;
 
 	switch (cmd) {
 	case ACOUSTIC_ARM11_DONE:
@@ -404,10 +427,49 @@ static long acoustic_ioctl(struct file *file, unsigned int cmd,
 		if (rc < 0)
 			pr_aud_err("ONCRPC_ENABLE_BEATS_PROC failed %d.\n", rc);
 		break;
+	
+	case ACOUSTIC_UPDATE_BEATS_STATUS: {
+		int new_state = -1;
+
+		if (copy_from_user(&new_state, (void *)arg, sizeof(new_state))) {
+			rc = -EFAULT;
+			break;
+		}
+		pr_aud_info("Update Beats Status : %d\n", new_state);
+		if (new_state < -1 || new_state > 1) {
+			pr_aud_err("Invalid Beats status update");
+			rc = -EINVAL;
+			break;
+		}
+
+		sdev_beats.state = -1;
+		switch_set_state(&sdev_beats, new_state);
+		rc = 0;
+		break;
+	}
+	
+	case ACOUSTIC_UPDATE_LISTEN_NOTIFICATION: {
+		int new_state = -1;
+
+		if (copy_from_user(&new_state, (void *)arg, sizeof(new_state))) {
+			rc = -EFAULT;
+			break;
+		}
+		pr_aud_info("Update listen notification : %d\n", new_state);
+		if (new_state < -1 || new_state > 1) {
+			pr_aud_err("Invalid listen notification state");
+			rc = -EINVAL;
+			break;
+		}
+
+		sdev_listen_notification.state = -1;
+		switch_set_state(&sdev_listen_notification, new_state);
+		break;
+	}
 	case ACOUSTIC_ENABLE_SH:
 		if (copy_from_user(&sh_arg, (void *)arg, sizeof(sh_arg))) {
 		    rc = -EFAULT;
-		    break;
+			break;
 		}
 		sh_req.enable = cpu_to_be32(sh_arg);
 		pr_aud_info("htc_acoustic enable_soundhound: %d\n", sh_arg);
@@ -460,12 +522,83 @@ static long acoustic_ioctl(struct file *file, unsigned int cmd,
 		} else
 			rc = -EFAULT;
 		pr_aud_info("ACOUSTIC_GET_TABLES: return %d\n", rc);
+			break;
+		}
+	case ACOUSTIC_SET_HEADSET_TYPE:
+		if (copy_from_user(&headset_type, (void *)arg,
+			sizeof(headset_type))) {
+			rc = -EFAULT;
+			break;
+		}
+		headset_type_req.type = cpu_to_be32(headset_type);
+		pr_aud_info("htc_acoustic set_headset_type: %d\n",
+			    headset_type);
+		rc = msm_rpc_call(endpoint, ONCRPC_SET_HEADSET_TYPE_PROC,
+			&headset_type_req, sizeof(headset_type_req), 5 * HZ);
+		if (rc < 0)
+			pr_aud_err("ONCRPC_SET_HEADSET_TYPE_PROC failed"
+				   " %d.\n", rc);
 		break;
-	}
+#if defined(CONFIG_CPLD) && (defined(CONFIG_MACH_DUMMY) || defined(CONFIG_MACH_DUMMY) || defined(CONFIG_MACH_DUMMY))
+	case ACOUSTIC_SW_SPKL_RECVR:
+		
+		if (copy_from_user(&dev_sw, (void *)arg, sizeof(dev_sw))) {
+			rc = -EFAULT;
+			break;
+		}
+		pr_aud_info("htc_acoustic switch_spkl_recvr: %s\n", dev_sw ? "Receiver" : "Speaker");
+		if (dev_sw < 0 || dev_sw > 1) {
+			pr_aud_err("Invalid parameter of audio receiver and speaker select");
+			rc = -EINVAL;
+			break;
+		}
+		cpld_gpio_write(CPLD_EXT_GPIO_AUD_SPK_RCV_SEL, dev_sw);
+		cpld_gpio_write(CPLD_EXT_GPIO_AUD_REV_EN, dev_sw);
+		rc = 0;
+		break;
+	case ACOUSTIC_ENABLE_MIC:
+		if (copy_from_user(&mic_en, (void *)arg, sizeof(mic_en))) {
+			rc = -EFAULT;
+			break;
+		}
+		pr_aud_info("htc_acoustic enable_mic: %s\n", mic_en ? "Mic Enable" : "Mic Disable");
+		if (mic_en < 0 || mic_en > 1) {
+			pr_aud_err("Invalid parameter of mic enable");
+			rc = -EINVAL;
+			break;
+		}
+		cpld_gpio_write(CPLD_EXT_GPIO_LED_3V3_EN, mic_en);
+		rc = 0;
+		break;
+	case ACOUSTIC_SW_MIC:
+		
+		if (copy_from_user(&dev_sw, (void *)arg, sizeof(dev_sw))) {
+			rc = -EFAULT;
+			break;
+		}
+		pr_aud_info("htc_acoustic switch_mic: %s\n", dev_sw ? "External Mic" : "Internal Mic");
+		if (dev_sw < 0 || dev_sw > 1) {
+			pr_aud_err("Invalid parameter of external or internal mic select");
+			rc = -EINVAL;
+			break;
+		}
+		cpld_gpio_write(CPLD_EXT_GPIO_AUD_MIC_SELECT, dev_sw);
+		rc = 0;
+		break;
+#endif
 	default:
 		rc = -EINVAL;
 	}
 	return rc;
+}
+
+static ssize_t beats_print_name(struct switch_dev *sdev, char *buf)
+{
+	return sprintf(buf, "Beats\n");
+}
+static ssize_t listen_notification_print_name(struct switch_dev *sdev, char *buf)
+{
+	return sprintf(buf, "Listen_notification\n");
 }
 
 static struct file_operations acoustic_fops = {
@@ -571,6 +704,26 @@ static int __init acoustic_init(void)
 		headset_notifier_register(&notifier);
 	}
 #endif
+
+	
+	sdev_beats.name = "Beats";
+	sdev_beats.print_name = beats_print_name;
+
+	ret = switch_dev_register(&sdev_beats);
+	if (ret < 0) {
+		pr_err("failed to register beats switch device!\n");
+		goto err_create_class_device_file;
+	}
+	
+
+	sdev_listen_notification.name = "Listen_notification";
+	sdev_listen_notification.print_name = listen_notification_print_name;
+
+	ret = switch_dev_register(&sdev_listen_notification);
+	if (ret < 0) {
+		pr_err("failed to register listen_notification switch device!\n");
+		return ret;
+	}
 
 	return 0;
 

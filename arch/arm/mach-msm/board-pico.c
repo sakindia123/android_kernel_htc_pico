@@ -1653,7 +1653,6 @@ static struct ion_platform_heap pico_heaps[] = {
 			.id	= ION_AUDIO_HEAP_ID,
 			.type	= ION_HEAP_TYPE_CARVEOUT,
 			.name	= ION_AUDIO_HEAP_NAME,
-			.size	= MSM_ION_AUDIO_SIZE,
 			.memory_type = ION_EBI_TYPE,
 			.extra_data = (void *) &co_ion_pdata,
 		},
@@ -1661,7 +1660,6 @@ static struct ion_platform_heap pico_heaps[] = {
 			.id	= ION_SF_HEAP_ID,
 			.type	= ION_HEAP_TYPE_CARVEOUT,
 			.name	= ION_SF_HEAP_NAME,
-			.size	= MSM_ION_SF_SIZE,
 			.memory_type = ION_EBI_TYPE,
 			.extra_data = &co_ion_pdata,
 		},
@@ -1697,17 +1695,27 @@ static void __init size_pmem_devices(void)
 {
 	android_pmem_adsp_pdata.size = pmem_adsp_size;
 }
+static void __init size_ion_devices(void)
+{
+#ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
+	ion_pdata.heaps[1].size = MSM_ION_AUDIO_SIZE;
+	ion_pdata.heaps[2].size = MSM_ION_SF_SIZE;
+#endif
+}
 static void __init reserve_pmem_memory(void) {
 	msm7x27a_reserve_table[MEMTYPE_EBI1].size += pmem_adsp_size;
 }
+#ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
 static void __init reserve_ion_memory(void) {
 	msm7x27a_reserve_table[MEMTYPE_EBI1].size += MSM_ION_AUDIO_SIZE;
 	msm7x27a_reserve_table[MEMTYPE_EBI1].size += MSM_ION_SF_SIZE;
 }
+#endif
 
 static void __init msm7x27a_calculate_reserve_sizes(void)
 {
 	size_pmem_devices();
+	size_ion_devices();
 	reserve_pmem_memory();
 	reserve_ion_memory();
 }

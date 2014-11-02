@@ -30,6 +30,7 @@
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/sync.h>
+#include <asm/current.h>
 
 static void sync_fence_signal_pt(struct sync_pt *pt);
 static int _sync_pt_has_signaled(struct sync_pt *pt);
@@ -79,12 +80,12 @@ static void sync_timeline_free(struct kref *kref)
 		container_of(kref, struct sync_timeline, kref);
 	unsigned long flags;
 
-	if (obj->ops->release_obj)
-		obj->ops->release_obj(obj);
-
 	spin_lock_irqsave(&sync_timeline_list_lock, flags);
 	list_del(&obj->sync_timeline_list);
 	spin_unlock_irqrestore(&sync_timeline_list_lock, flags);
+
+	if (obj->ops->release_obj)
+		obj->ops->release_obj(obj);
 
 	kfree(obj);
 }
@@ -92,14 +93,14 @@ static void sync_timeline_free(struct kref *kref)
 void sync_timeline_destroy(struct sync_timeline *obj)
 {
 	obj->destroyed = true;
+	smp_wmb();
 
 	/*
-	 * If this is not the last reference, signal any children
-	 * that their parent is going away.
+	 * signal any children that their parent is going away.
 	 */
+	sync_timeline_signal(obj);
 
-	if (!kref_put(&obj->kref, sync_timeline_free))
-		sync_timeline_signal(obj);
+	kref_put(&obj->kref, sync_timeline_free);
 }
 EXPORT_SYMBOL(sync_timeline_destroy);
 
@@ -270,7 +271,7 @@ static struct sync_fence *sync_fence_alloc(const char *name)
 	INIT_LIST_HEAD(&fence->pt_list_head);
 	INIT_LIST_HEAD(&fence->waiter_list_head);
 	spin_lock_init(&fence->waiter_list_lock);
-
+	trace_sync_alloc(fence,current->pid);
 	init_waitqueue_head(&fence->wq);
 
 	spin_lock_irqsave(&sync_fence_list_lock, flags);
@@ -615,10 +616,12 @@ int sync_fence_wait(struct sync_fence *fence, long timeout)
 		return fence->status;
 	}
 
-	if (fence->status == 0 && timeout > 0) {
-		pr_info("fence timeout on [%p] after %dms\n", fence,
-			jiffies_to_msecs(timeout));
-		sync_dump(fence);
+	if (fence->status == 0) {
+		if (timeout > 0) {
+			pr_info("fence timeout on [%p] after %dms\n", fence,
+				jiffies_to_msecs(timeout));
+			sync_dump(fence);
+		}
 		return -ETIME;
 	}
 
@@ -629,6 +632,8 @@ EXPORT_SYMBOL(sync_fence_wait);
 static void sync_fence_free(struct kref *kref)
 {
 	struct sync_fence *fence = container_of(kref, struct sync_fence, kref);
+
+	trace_sync_free(fence, current->pid);
 
 	sync_fence_free_pts(fence);
 
@@ -740,7 +745,7 @@ err_put_fd:
 	return err;
 }
 
-int sync_fill_pt_info(struct sync_pt *pt, void *data, int size)
+static int sync_fill_pt_info(struct sync_pt *pt, void *data, int size)
 {
 	struct sync_pt_info *info = data;
 	int ret;
@@ -767,7 +772,6 @@ int sync_fill_pt_info(struct sync_pt *pt, void *data, int size)
 
 	return info->len;
 }
-
 
 static long sync_fence_ioctl_fence_info(struct sync_fence *fence,
 					unsigned long arg)

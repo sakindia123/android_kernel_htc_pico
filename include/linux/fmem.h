@@ -20,6 +20,7 @@
 struct fmem_platform_data {
 	unsigned long phys;
 	unsigned long size;
+	unsigned long reserved_size;
 	unsigned long reserved_size_low;
 	unsigned long reserved_size_high;
 	unsigned long align;
@@ -30,6 +31,7 @@ struct fmem_data {
 	void *virt;
 	struct vm_struct *area;
 	unsigned long size;
+	unsigned long reserved_size;
 	unsigned long reserved_size_low;
 	unsigned long reserved_size_high;
 };

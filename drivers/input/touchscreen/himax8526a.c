@@ -622,7 +622,7 @@ static void himax_ts_work_func(struct work_struct *work)
 					ts->pre_finger_data[1] = y;
 				}
 
-				//if (ts->debug_log_level & 0x2)
+				if (ts->debug_log_level & 0x2)
 					printk(KERN_INFO "Finger %d=> X:%d, Y:%d w:%d, z:%d\n",
 						loop_i + 1, x, y, w, w);
 			}
